@@ -1,0 +1,28 @@
+{
+  "name": "react-user-media",
+  "private": false,
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p ./tsconfig.types.json --emitDeclarationOnly && tsup --format cjs,esm src/index.ts",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "devDependencies": {
+    "react": "^18.3.1"
+  }
+}

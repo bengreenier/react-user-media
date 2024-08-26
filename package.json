@@ -1,0 +1,29 @@
+{
+  "name": "@react-user-media/monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "build": "pnpm -r run --if-present build",
+    "dev": "pnpm -r run --if-present dev",
+    "test": "pnpm -r run --if-present test",
+    "lint": "pnpm -r run --if-present lint"
+  },
+  "devDependencies": {
+    "@types/node": "*",
+    "prettier": "*",
+    "tsup": "*",
+    "typescript": "*",
+    "vite": "*",
+    "vitest": "*"
+  },
+  "pnpm": {
+    "overrides": {
+      "@types/node": "^22.5.0",
+      "prettier": "^3.3.3",
+      "tsup": "^8.2.4",
+      "typescript": "^5.5.4",
+      "vite": "^5.4.2",
+      "vitest": "^2.0.5"
+    }
+  }
+}
