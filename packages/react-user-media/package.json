@@ -1,5 +1,6 @@
 {
   "name": "@bengreenier/react-user-media",
+  "description": "A small collection of hooks and components for easier access to getUserMedia, getDisplayMedia, and enumerateDevices in React.",
   "private": false,
   "exports": {
     ".": {
@@ -44,5 +45,9 @@
     "globals": "^15.9.0",
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.0.1"
-  }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ]
 }
