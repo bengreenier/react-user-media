@@ -1,6 +1,6 @@
 {
   "name": "@bengreenier/react-user-media",
-  "description": "A small collection of hooks and components for easier access to getUserMedia, getDisplayMedia, and enumerateDevices in React.",
+  "description": "A collection of hooks and components for easier access to getUserMedia, getDisplayMedia, and enumerateDevices in React.",
   "private": false,
   "exports": {
     ".": {
@@ -29,7 +29,8 @@
   ],
   "scripts": {
     "build": "tsc -p ./tsconfig.types.json --emitDeclarationOnly && tsup --tsconfig ./tsconfig.lib.json --format cjs,esm src/index.ts",
-    "test": "vitest",
+    "test": "vitest run --coverage",
+    "test-visible": "vitest run --coverage --browser.headless false",
     "lint": "eslint ."
   },
   "peerDependencies": {
@@ -38,6 +39,7 @@
   "dependencies": {},
   "devDependencies": {
     "@types/react": "^18.3.4",
+    "@types/react-dom": "^18.3.0",
     "react": "^18.3.1",
     "@eslint/js": "^9.9.0",
     "eslint": "^9.9.0",
@@ -48,8 +50,11 @@
     "typescript-eslint": "^8.0.1",
     "vitest": "^2.0.5",
     "@vitest/browser": "^2.0.5",
+    "@vitest/coverage-istanbul": "^2.0.5",
     "playwright": "^1.46.1",
-    "@testing-library/react": "^16.0.1"
+    "@testing-library/react": "^16.0.1",
+    "@testing-library/dom": "^10.4.0",
+    "@testing-library/jest-dom": "^6.5.0"
   },
   "files": [
     "dist",

@@ -1,6 +1,6 @@
 # react-user-media
 
-A small collection of hooks and components for easier access to [`getUserMedia`](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia), [`getDisplayMedia`](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getDisplayMedia), and [`enumerateDevices`](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/enumerateDevices) in [React](https://react.dev).
+A collection of hooks and components for easier access to [`getUserMedia`](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia), [`getDisplayMedia`](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getDisplayMedia), and [`enumerateDevices`](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/enumerateDevices) in [React](https://react.dev).
 
 ## Hooks
 
@@ -26,6 +26,11 @@ A small collection of hooks and components for easier access to [`getUserMedia`]
 - `AudioPlayer`
 - `VideoPlayer`
 
+## Utility functions
+
+- `getSupportedConstraints()`
+- `closeMedia(...)`
+
 ## Contributing
 
 Please feel free to open any issues or PRs!
@@ -43,4 +48,4 @@ Then just `pnpm run`:
 
 ## License
 
-MIT
+Dual-licensed under Apache 2.0 + MIT.

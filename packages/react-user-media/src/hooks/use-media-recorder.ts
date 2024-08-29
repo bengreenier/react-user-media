@@ -20,6 +20,25 @@ export interface RecorderOptions extends MediaRecorderOptions {
    * the media continues to be recorded.
    */
   timeslice?: number;
+
+  /**
+   * A custom handler for the `datavailable` event.
+   *
+   * Note: This is for advanced use-cases only. You probably don't need to modify the default handler.
+   * @param ev - the event
+   * @param callback - the callback that updates internal state
+   *
+   * @example
+   * ```ts
+   * function handleData(ev: BlobEvent, callback: (value: React.SetStateAction<Blob[]>) => void) {
+   *    callback((current) => current.concat(ev.data));
+   * }
+   * ```
+   */
+  dataAvailableHandler?: (
+    ev: BlobEvent,
+    callback: (value: React.SetStateAction<Blob[]>) => void,
+  ) => void;
 }
 
 /**
@@ -173,15 +192,21 @@ export function useMediaRecorder(): RecorderState {
         return;
       }
 
-      const { timeslice, ...recorderOptions } = {
+      const { timeslice, dataAvailableHandler, ...recorderOptions } = {
         timeslice: 30 * 1000 /* 30s */,
+        dataAvailableHandler: (
+          ev: BlobEvent,
+          callback: (value: React.SetStateAction<Blob[]>) => void,
+        ) => {
+          callback((current) => current.concat(ev.data));
+        },
         ...options,
       };
 
       const recorder = new MediaRecorder(media, recorderOptions);
 
-      recorder.addEventListener("dataavailable", (ev) => {
-        setSegments((current) => current.concat(ev.data));
+      recorder.addEventListener("dataavailable", function onDataAvailable(ev) {
+        dataAvailableHandler(ev, setSegments);
       });
 
       setSegments([]);
