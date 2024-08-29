@@ -1,5 +1,5 @@
 {
-  "name": "react-user-media",
+  "name": "@bengreenier/react-user-media",
   "private": false,
   "exports": {
     ".": {
@@ -11,6 +11,10 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "author": {
+    "name": "bengreenier",
+    "url": "https://github.com/bengreenier"
   },
   "version": "0.1.0",
   "type": "module",
@@ -24,8 +28,7 @@
   ],
   "scripts": {
     "build": "tsc -p ./tsconfig.types.json --emitDeclarationOnly && tsup --tsconfig ./tsconfig.lib.json --format cjs,esm src/index.ts",
-    "lint": "eslint .",
-    "preview": "vite preview"
+    "lint": "eslint ."
   },
   "peerDependencies": {
     "react": ">=18"
