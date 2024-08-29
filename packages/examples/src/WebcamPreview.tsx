@@ -3,7 +3,7 @@ import {
   useMediaRecorder,
   useMediaTracks,
   VideoPlayer,
-} from "react-user-media";
+} from "@bengreenier/react-user-media";
 
 export function WebcamPreview() {
   const { request, isError, error, isLoading, isReady, media } =

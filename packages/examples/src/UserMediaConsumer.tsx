@@ -1,4 +1,4 @@
-import { useMedia } from "react-user-media";
+import { useMedia } from "@bengreenier/react-user-media";
 
 export function UserMediaConsumer() {
   const state = useMedia("user");

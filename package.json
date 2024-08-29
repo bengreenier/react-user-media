@@ -14,16 +14,20 @@
     "tsup": "*",
     "typescript": "*",
     "vite": "*",
-    "vitest": "*"
+    "vitest": "*",
+    "@vitest/browser": "*",
+    "playwright": "*"
   },
   "pnpm": {
     "overrides": {
       "@types/node": "^22.5.0",
       "prettier": "^3.3.3",
+      "playwright": "^1.46.1",
       "tsup": "^8.2.4",
       "typescript": "^5.5.4",
       "vite": "^5.4.2",
-      "vitest": "^2.0.5"
+      "vitest": "^2.0.5",
+      "@vitest/browser": "^2.0.5"
     }
   },
   "engines": {
