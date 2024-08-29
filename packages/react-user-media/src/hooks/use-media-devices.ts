@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { ShapeOf } from "../types";
+import { ShallowShapeOf } from "../types";
 
 interface MediaDeviceStateBase {
   isLoading: boolean;
@@ -131,7 +131,7 @@ export function useMediaDevices(
     error,
     devices,
     request,
-  } satisfies ShapeOf<MediaDeviceState>;
+  } satisfies ShallowShapeOf<MediaDeviceState>;
 
   // we cast, as it isn't worth the runtime cost to check that this
   // lines up with each condition (isError, isLoading, isReady)

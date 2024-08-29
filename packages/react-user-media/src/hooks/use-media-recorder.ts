@@ -5,7 +5,7 @@ import {
   useSyncExternalStore,
   useEffect,
 } from "react";
-import { ShapeOf } from "../types";
+import { ShallowShapeOf } from "../types";
 
 export interface RecorderOptions extends MediaRecorderOptions {
   /**
@@ -150,7 +150,7 @@ export function useMediaRecorder(): RecorderState {
     endTime,
     startRecording,
     stopRecording,
-  } satisfies ShapeOf<RecorderState>;
+  } satisfies ShallowShapeOf<RecorderState>;
 
   // we cast, as it isn't worth the runtime cost to check that this
   // lines up with each condition (isError, isLoading, isReady)

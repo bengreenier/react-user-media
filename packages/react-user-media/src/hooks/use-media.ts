@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { ShapeOf } from "../types";
+import { ShallowShapeOf } from "../types";
 
 type UserMediaBaseType = MediaStreamConstraints;
 type DisplayMediaBaseType = DisplayMediaStreamOptions;
@@ -198,7 +198,7 @@ export function useMedia<
     error,
     media,
     request,
-  } satisfies ShapeOf<UserMediaState | DisplayMediaState>;
+  } satisfies ShallowShapeOf<UserMediaState | DisplayMediaState>;
 
   // we cast, as it isn't worth the runtime cost to check that this
   // lines up with each condition (isError, isLoading, isReady)
