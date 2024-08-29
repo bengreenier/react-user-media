@@ -15,14 +15,23 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "build": "tsc -p ./tsconfig.types.json --emitDeclarationOnly && tsup --format cjs,esm src/index.ts",
+    "build": "tsc -p ./tsconfig.types.json --emitDeclarationOnly && tsup --tsconfig ./tsconfig.lib.json --format cjs,esm src/index.ts",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "peerDependencies": {
     "react": ">=18"
   },
+  "dependencies": {},
   "devDependencies": {
-    "react": "^18.3.1"
+    "@types/react": "^18.3.4",
+    "react": "^18.3.1",
+    "@eslint/js": "^9.9.0",
+    "eslint": "^9.9.0",
+    "eslint-plugin-react-hooks": "^5.1.0-rc.0",
+    "eslint-plugin-react-refresh": "^0.4.9",
+    "globals": "^15.9.0",
+    "typescript": "^5.5.3",
+    "typescript-eslint": "^8.0.1"
   }
 }
