@@ -7,6 +7,9 @@ import {
 } from "react";
 import { ShallowShapeOf } from "../types";
 
+/**
+ * Options for configuring the recorder. Extends {@link MediaRecorderOptions}.
+ */
 export interface RecorderOptions extends MediaRecorderOptions {
   /**
    * The number of milliseconds to record into each `Blob`.
@@ -19,20 +22,76 @@ export interface RecorderOptions extends MediaRecorderOptions {
   timeslice?: number;
 }
 
+/**
+ * The base state of the recorder.
+ */
 interface RecorderStateBase {
+  /**
+   * Indicates that attempting to record the `media`.
+   * caused an {@link Error}.
+   *
+   * See {@link error}.
+   */
   isError: boolean;
+
+  /**
+   * Indicates that media is actively being recorded.
+   *
+   * See {@link startTime}.
+   */
   isRecording: boolean;
+
+  /**
+   * Indicates that {@link segments} are ready for consumption.
+   *
+   * See {@link segments} and {@link endTime}.
+   */
   isFinalized: boolean;
 
+  /**
+   * An error that occurred attempting to record the `media`.
+   *
+   * See {@link isError}.
+   */
   error: Error | null;
+
+  /**
+   * The time at which the `media` began recording.
+   *
+   * See {@link isRecording}.
+   */
   startTime: DOMHighResTimeStamp | null;
+
+  /**
+   * The time at which the `media` stopped recording.
+   *
+   * See {@link isFinalized}.
+   */
   endTime: DOMHighResTimeStamp | null;
+
+  /**
+   * The segments of the recorded `media`.
+   *
+   * See {@link isRecording} and {@link isFinalized}.
+   */
   segments: Blob[];
 
+  /**
+   * Starts recording `media` with this recorder.
+   * @param media the media to record.
+   * @param options the optional options for recording.
+   */
   startRecording(media: MediaStream, options?: RecorderOptions): void;
+
+  /**
+   * Stops recording `media` with this recorder.
+   */
   stopRecording(): void;
 }
 
+/**
+ * The error state of the recorder.
+ */
 interface RecorderErrorState extends RecorderStateBase {
   isError: true;
   isRecording: false;
@@ -43,6 +102,9 @@ interface RecorderErrorState extends RecorderStateBase {
   segments: [];
 }
 
+/**
+ * The recording state of the recorder.
+ */
 interface RecorderRecordingState extends RecorderStateBase {
   isError: false;
   isRecording: true;
@@ -53,6 +115,9 @@ interface RecorderRecordingState extends RecorderStateBase {
   segments: [];
 }
 
+/**
+ * The final state of the recorder.
+ */
 interface RecorderFinalizedState extends RecorderStateBase {
   isError: false;
   isRecording: false;
@@ -63,11 +128,18 @@ interface RecorderFinalizedState extends RecorderStateBase {
   segments: Blob[];
 }
 
+/**
+ * The state of the recorder.
+ */
 export type RecorderState =
   | RecorderErrorState
   | RecorderRecordingState
   | RecorderFinalizedState;
 
+/**
+ * Hook that facilitates recording {@link MediaStream} `media` with a {@link MediaRecorder}.
+ * @returns See {@link RecorderState} for more information.
+ */
 export function useMediaRecorder(): RecorderState {
   const [recorder, setRecorder] = useState<MediaRecorder | undefined>(
     undefined,
@@ -157,6 +229,11 @@ export function useMediaRecorder(): RecorderState {
   return state as RecorderState;
 }
 
+/**
+ * Helper hook (internal only) that observes a {@link MediaRecorder.state}
+ * @param recorder the {@link MediaRecorder} to observe.
+ * @returns The `recorder` state.
+ */
 function useMediaRecorderState(recorder: MediaRecorder | undefined) {
   return useSyncExternalStore(
     useCallback(
@@ -184,6 +261,11 @@ function useMediaRecorderState(recorder: MediaRecorder | undefined) {
   );
 }
 
+/**
+ * Helper hook (internal only) that observes a {@link MediaRecorder} for error events.
+ * @param recorder the {@link MediaRecorder} to observe.
+ * @returns The `error`, if any.
+ */
 function useMediaRecorderError(recorder: MediaRecorder | undefined) {
   const [error, setError] = useState<Error | null>(null);
 

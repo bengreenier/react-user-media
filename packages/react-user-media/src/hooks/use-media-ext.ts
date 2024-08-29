@@ -1,5 +1,11 @@
 import { useSyncExternalStore, useCallback, useRef } from "react";
 
+/**
+ * Hook that observes {@link MediaStream.getTracks} and provides access
+ * to the results.
+ * @param media the {@link MediaStream} to observe.
+ * @returns an array of {@link MediaStreamTrack}s.
+ */
 export function useMediaTracks(media: MediaStream | undefined) {
   const trackCache = useRef<MediaStreamTrack[]>([]);
 
@@ -45,16 +51,41 @@ export function useMediaTracks(media: MediaStream | undefined) {
   );
 }
 
+/**
+ * Hook that observes {@link MediaStream.getTracks} results that
+ * have a {@link MediaStreamTrack.kind|`kind`} of `audio` and
+ * provides access to the results.
+ * @param media the {@link MediaStream} to observe.
+ * @returns an array of audio {@link MediaStreamTrack}s.
+ */
 export function useMediaAudioTracks(media: MediaStream | undefined) {
   return useMediaTracks(media).filter((t) => t.kind === "audio");
 }
 
+/**
+ * Hook that observes {@link MediaStream.getTracks} results that
+ * have a {@link MediaStreamTrack.kind|`kind`} of `video` and
+ * provides access to the results.
+ * @param media the {@link MediaStream} to observe.
+ * @returns an array of video {@link MediaStreamTrack}s.
+ */
 export function useMediaVideoTracks(media: MediaStream | undefined) {
   return useMediaTracks(media).filter((t) => t.kind === "video");
 }
 
+/**
+ * Either `muted` or `unmuted`.
+ *
+ * See {@link useTrackMuteState}.
+ */
 export type TrackMuteState = "muted" | "unmuted";
 
+/**
+ * Hook that observes a {@link MediaStreamTrack} {@link MediaStreamTrack.muted|`muted`} value
+ * and provides access to the results.
+ * @param track the {@link MediaStreamTrack} to observe.
+ * @returns The {@link TrackMuteState} for the `track`.
+ */
 export function useTrackMuteState(track: MediaStreamTrack) {
   return useSyncExternalStore(
     useCallback(

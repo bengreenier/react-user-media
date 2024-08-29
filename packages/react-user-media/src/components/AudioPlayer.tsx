@@ -10,11 +10,22 @@ type AudioElementProps = DetailedHTMLProps<
   HTMLAudioElement
 >;
 
+/**
+ * React props for {@link AudioPlayer}.
+ */
 export interface AudioPlayerProps
   extends Omit<AudioElementProps, keyof Pick<AudioElementProps, "src">> {
+  /**
+   * The {@link MediaProvider} instance to play.
+   */
   media: MediaProvider;
 }
 
+/**
+ * Component for easier audio playback. Wraps {@link HTMLAudioElement|&lt;audio&gt;}.
+ *
+ * See {@link AudioPlayerProps}.
+ */
 export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(
   function AudioPlayer(props, ref) {
     const { media, ...rest } = props;
