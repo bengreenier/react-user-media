@@ -5,6 +5,7 @@
   "scripts": {
     "build": "pnpm -r run --if-present build",
     "dev": "pnpm -r run --if-present dev",
+    "doc": "pnpm -r run --if-present doc",
     "test": "pnpm -r run --if-present test",
     "lint": "pnpm -r run --if-present lint"
   },
@@ -16,7 +17,9 @@
     "vite": "*",
     "vitest": "*",
     "@vitest/browser": "*",
-    "playwright": "*"
+    "playwright": "*",
+    "typedoc": "*",
+    "typedoc-github-theme": "*"
   },
   "pnpm": {
     "overrides": {
@@ -27,7 +30,9 @@
       "typescript": "^5.5.4",
       "vite": "^5.4.2",
       "vitest": "^2.0.5",
-      "@vitest/browser": "^2.0.5"
+      "@vitest/browser": "^2.0.5",
+      "typedoc": "^0.26.6",
+      "typedoc-github-theme": "^0.1.2"
     }
   },
   "engines": {

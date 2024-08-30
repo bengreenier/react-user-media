@@ -19,21 +19,11 @@ jobs:
           version: latest
           run_install: true
 
-      - name: Install doc theme
-        run: pnpm i -dW typedoc-github-theme
-
-      - name: Build
-        uses: bengreenier/tsdoc-action@v1.1-alpha.1
-        with:
-          source_dir: ./packages/react-user-media/*
-          output_dir: ./docs_out
-          plugin: typedoc-github-theme
-          tsconfig: ./packages/react-user-media/tsconfig.lib.json
-          front_page: ./packages/react-user-media/README.md
+      - run: pnpm run doc
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs_out
+          publish_dir: ./packages/react-user-media/docs_out
           

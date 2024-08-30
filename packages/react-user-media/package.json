@@ -29,6 +29,7 @@
   ],
   "scripts": {
     "build": "tsc -p ./tsconfig.types.json --emitDeclarationOnly && tsup --tsconfig ./tsconfig.lib.json --format cjs,esm src/index.ts",
+    "doc": "typedoc --plugin typedoc-github-theme --tsconfig ./tsconfig.lib.json --readme ./README.md --basePath ./src --out ./docs_out --entryPoints ./src/index.ts",
     "test": "vitest run --coverage",
     "test-visible": "vitest run --coverage --browser.headless false",
     "lint": "eslint ."
@@ -54,7 +55,9 @@
     "playwright": "^1.46.1",
     "@testing-library/react": "^16.0.1",
     "@testing-library/dom": "^10.4.0",
-    "@testing-library/jest-dom": "^6.5.0"
+    "@testing-library/jest-dom": "^6.5.0",
+    "typedoc": "^0.26.6",
+    "typedoc-github-theme": "^0.1.2"
   },
   "files": [
     "dist",
