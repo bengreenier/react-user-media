@@ -13,12 +13,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
+      - name: Install doc theme
+        run: npm i -g typedoc-github-theme
       - name: Build
-        uses: andstor/jsdoc-action@v1
+        uses: erikyo/tsdoc-action@v1
         with:
-          source_dir: ./packages/react-user-media
+          source_dir: ./packages/react-user-media/*
           output_dir: ./docs_out
-          template: minami
+          theme: typedoc-github-theme
           front_page: ./packages/react-user-media/README.md
 
       - name: Deploy
