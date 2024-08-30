@@ -1,0 +1,44 @@
+name: CI/CD
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: pnpm/action-setup@v4.0.0
+        with:
+          version: latest
+          run_install: true
+      - run: pnpm run lint 
+      - run: pnpm run build
+      - run: pnpm run test
+      
+  publish-npm:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org/
+      - uses: pnpm/action-setup@v4.0.0
+        with:
+          version: latest
+          run_install: true
+      - run: pnpm publish
+        env:
+          NODE_AUTH_TOKEN: ${{secrets.npm_token}}
