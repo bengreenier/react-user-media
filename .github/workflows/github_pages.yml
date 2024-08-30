@@ -27,7 +27,7 @@ jobs:
         with:
           source_dir: ./packages/react-user-media/*
           output_dir: ./docs_out
-          theme: typedoc-github-theme
+          plugin: typedoc-github-theme
           tsconfig: ./packages/react-user-media/tsconfig.lib.json
           front_page: ./packages/react-user-media/README.md
 
