@@ -20,7 +20,7 @@ jobs:
           run_install: true
 
       - name: Install doc theme
-        run: pnpm i -g typedoc-github-theme
+        run: pnpm i -dW typedoc-github-theme
 
       - name: Build
         uses: bengreenier/tsdoc-action@v1.1-alpha.1
