@@ -10,18 +10,25 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: pnpm/action-setup@v4.0.0
+        with:
+          version: latest
+          run_install: true
 
       - name: Install doc theme
-        run: npm i -g typedoc-github-theme
+        run: pnpm i -g typedoc-github-theme
+
       - name: Build
         uses: erikyo/tsdoc-action@v1
         with:
           source_dir: ./packages/react-user-media/*
           output_dir: ./docs_out
           theme: typedoc-github-theme
-          tsconfig: ./packages/react-user-media/tsconfig.lib.json
+          tsconfig_file: ./packages/react-user-media/tsconfig.lib.json
           front_page: ./packages/react-user-media/README.md
 
       - name: Deploy
