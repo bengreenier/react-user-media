@@ -18,7 +18,6 @@ jobs:
         with:
           source_dir: ./packages/react-user-media
           output_dir: ./docs_out
-          config_file: conf.json
           template: minami
           front_page: ./packages/react-user-media/README.md
 
