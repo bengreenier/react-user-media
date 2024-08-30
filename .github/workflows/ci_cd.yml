@@ -40,6 +40,8 @@ jobs:
         with:
           version: latest
           run_install: true
-      - run: pnpm publish
+      # TODO(bengreenier): Use an artifact instead
+      - run: pnpm run build
+      - run: pnpm --filter @bengreenier/react-user-media publish
         env:
           NODE_AUTH_TOKEN: ${{secrets.npm_token}}
