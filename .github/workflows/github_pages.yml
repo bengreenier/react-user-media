@@ -23,12 +23,12 @@ jobs:
         run: pnpm i -g typedoc-github-theme
 
       - name: Build
-        uses: erikyo/tsdoc-action@v1
+        uses: bengreenier/tsdoc-action@v1.1
         with:
           source_dir: ./packages/react-user-media/*
           output_dir: ./docs_out
           theme: typedoc-github-theme
-          tsconfig_file: ./packages/react-user-media/tsconfig.lib.json
+          tsconfig: ./packages/react-user-media/tsconfig.lib.json
           front_page: ./packages/react-user-media/README.md
 
       - name: Deploy
