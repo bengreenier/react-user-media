@@ -21,6 +21,7 @@ jobs:
         with:
           version: latest
           run_install: true
+      - run: pnpm exec playwright install
       - run: pnpm run lint 
       - run: pnpm run build
       - run: pnpm run test
