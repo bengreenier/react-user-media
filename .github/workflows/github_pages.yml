@@ -23,7 +23,7 @@ jobs:
         run: pnpm i -g typedoc-github-theme
 
       - name: Build
-        uses: bengreenier/tsdoc-action@v1.1
+        uses: bengreenier/tsdoc-action@v1.1-alpha.1
         with:
           source_dir: ./packages/react-user-media/*
           output_dir: ./docs_out
