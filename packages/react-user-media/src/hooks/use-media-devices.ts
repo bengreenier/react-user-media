@@ -112,11 +112,6 @@ export function useMediaDevices(
 
   const request = useCallback(
     function requestMediaDevices() {
-      // don't request again if one is still pending
-      if (isLoading) {
-        return;
-      }
-
       if (!navigator.mediaDevices.enumerateDevices) {
         // see https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/enumerateDevices
         return setError(
@@ -141,7 +136,7 @@ export function useMediaDevices(
         },
       );
     },
-    [isLoading, filter],
+    [filter],
   );
 
   useEffect(
