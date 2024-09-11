@@ -8,6 +8,7 @@ import {
 export function WebcamPreview() {
   const { request, isError, error, isLoading, isReady, media } =
     useMedia("user");
+
   const {
     startRecording,
     stopRecording,

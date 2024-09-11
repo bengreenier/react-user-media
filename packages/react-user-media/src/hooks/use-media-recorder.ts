@@ -4,6 +4,7 @@ import {
   useCallback,
   useSyncExternalStore,
   useEffect,
+  useRef,
 } from "react";
 import { ShallowShapeOf } from "../types";
 
@@ -160,9 +161,15 @@ export type RecorderState =
  * @returns See {@link RecorderState} for more information.
  */
 export function useMediaRecorder(): RecorderState {
-  const [recorder, setRecorder] = useState<MediaRecorder | undefined>(
-    undefined,
-  );
+  // we need _both_ a referentially stable version of MediaRecorder and a mutable version
+  // so that we can have stable start/stop functions, but also dynamic state updates
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const [isRecorderDirty, setIsRecorderDirty] = useState<boolean>(false);
+  const recorder = useMemo(() => {
+    if (isRecorderDirty) setIsRecorderDirty(false);
+
+    return recorderRef.current ?? undefined;
+  }, [recorderRef, isRecorderDirty]);
 
   const recorderState = useMediaRecorderState(recorder);
   const isRecording = useMemo(
@@ -182,60 +189,45 @@ export function useMediaRecorder(): RecorderState {
   const [startTime, setStartTime] = useState<DOMHighResTimeStamp | null>(null);
   const [endTime, setEndTime] = useState<DOMHighResTimeStamp | null>(null);
 
-  const startRecording = useCallback(
-    function startRecordingMedia(
-      media: MediaStream,
-      options?: RecorderOptions,
-    ) {
-      // don't allow multiple recordings at once
-      if (isRecording) {
-        return;
-      }
+  const startRecording = useCallback(function startRecordingMedia(
+    media: MediaStream,
+    options?: RecorderOptions,
+  ) {
+    const { timeslice, dataAvailableHandler, ...recorderOptions } = {
+      timeslice: 30 * 1000 /* 30s */,
+      dataAvailableHandler: (
+        ev: BlobEvent,
+        callback: (value: React.SetStateAction<Blob[]>) => void,
+      ) => {
+        callback((current) => current.concat(ev.data));
+      },
+      ...options,
+    };
 
-      const { timeslice, dataAvailableHandler, ...recorderOptions } = {
-        timeslice: 30 * 1000 /* 30s */,
-        dataAvailableHandler: (
-          ev: BlobEvent,
-          callback: (value: React.SetStateAction<Blob[]>) => void,
-        ) => {
-          callback((current) => current.concat(ev.data));
-        },
-        ...options,
-      };
+    const recorder = new MediaRecorder(media, recorderOptions);
 
-      const recorder = new MediaRecorder(media, recorderOptions);
+    recorder.addEventListener("dataavailable", function onDataAvailable(ev) {
+      dataAvailableHandler(ev, setSegments);
+    });
 
-      recorder.addEventListener("dataavailable", function onDataAvailable(ev) {
-        dataAvailableHandler(ev, setSegments);
-      });
+    setSegments([]);
 
-      setSegments([]);
+    const startTime = performance.now();
+    recorder.start(timeslice);
 
-      const startTime = performance.now();
-      recorder.start(timeslice);
+    setStartTime(startTime);
 
-      setStartTime(startTime);
-      setRecorder(recorder);
-    },
-    [isRecording],
-  );
+    recorderRef.current = recorder;
+    setIsRecorderDirty(true);
+  }, []);
 
-  const stopRecording = useCallback(
-    function stopRecordingMedia() {
-      // don't allow stopping of "nothing"
-      if (!isRecording) {
-        console.log("not recording");
-        return;
-      }
+  const stopRecording = useCallback(function stopRecordingMedia() {
+    const endTime = performance.now();
 
-      const endTime = performance.now();
+    recorderRef.current?.stop();
 
-      recorder?.stop();
-
-      setEndTime(endTime);
-    },
-    [isRecording, recorder],
-  );
+    setEndTime(endTime);
+  }, []);
 
   const state = {
     isError,

@@ -192,11 +192,6 @@ export function useMedia<
     function requestUserMedia(
       ...args: Parameters<inferMediaDef<TType>["requestType"]["request"]>
     ) {
-      // don't request again if one is still pending
-      if (isLoading) {
-        return;
-      }
-
       if (type === "user" && !navigator.mediaDevices.getUserMedia) {
         // see https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia
         return setError(
@@ -258,7 +253,7 @@ export function useMedia<
           (type) satisfies never;
       }
     },
-    [type, isLoading],
+    [type],
   );
 
   const state = {
