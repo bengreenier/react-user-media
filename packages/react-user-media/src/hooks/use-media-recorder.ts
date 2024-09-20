@@ -180,14 +180,15 @@ export function useMediaRecorder(): RecorderState {
   const error = useMediaRecorderError(recorder);
   const isError = useMemo(() => error !== null, [error]);
 
-  const [segments, setSegments] = useState<Blob[]>([]);
-  const isFinalized = useMemo(
-    () => segments.length > 0 && recorderState === "inactive",
-    [segments, recorderState],
-  );
-
   const [startTime, setStartTime] = useState<DOMHighResTimeStamp | null>(null);
   const [endTime, setEndTime] = useState<DOMHighResTimeStamp | null>(null);
+
+  const [segments, setSegments] = useState<Blob[]>([]);
+  const isFinalized = useMemo(
+    () =>
+      segments.length > 0 && recorderState === "inactive" && endTime !== null,
+    [segments, recorderState, endTime],
+  );
 
   const startRecording = useCallback(function startRecordingMedia(
     media: MediaStream,
@@ -211,6 +212,7 @@ export function useMediaRecorder(): RecorderState {
     });
 
     setSegments([]);
+    setEndTime(null);
 
     const startTime = performance.now();
     recorder.start(timeslice);
@@ -224,9 +226,15 @@ export function useMediaRecorder(): RecorderState {
   const stopRecording = useCallback(function stopRecordingMedia() {
     const endTime = performance.now();
 
-    recorderRef.current?.stop();
+    recorderRef.current?.addEventListener(
+      "stop",
+      function onStopCompleted() {
+        setEndTime(endTime);
+      },
+      { once: true },
+    );
 
-    setEndTime(endTime);
+    recorderRef.current?.stop();
   }, []);
 
   const state = {
