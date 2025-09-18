@@ -1,4 +1,7 @@
-import { UseMediaDeviceOptions, useMediaDevices } from "./use-media-devices";
+import {
+	type UseMediaDeviceOptions,
+	useMediaDevices,
+} from "./use-media-devices";
 
 /**
  * Hook that observes {@link https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/enumerateDevices|enumerateDevices}
@@ -7,15 +10,15 @@ import { UseMediaDeviceOptions, useMediaDevices } from "./use-media-devices";
  * @returns a {@link MediaDeviceState}.
  */
 export function useMediaAudioDevices(options?: UseMediaDeviceOptions) {
-  return useMediaDevices({
-    ...options,
-    filter(device) {
-      return (
-        device.kind.startsWith("audio") &&
-        (!options?.filter || options.filter(device))
-      );
-    },
-  });
+	return useMediaDevices({
+		...options,
+		filter(device) {
+			return (
+				device.kind.startsWith("audio") &&
+				(!options?.filter || options.filter(device))
+			);
+		},
+	});
 }
 
 /**
@@ -25,15 +28,15 @@ export function useMediaAudioDevices(options?: UseMediaDeviceOptions) {
  * @returns a {@link MediaDeviceState}.
  */
 export function useMediaAudioInputDevices(options?: UseMediaDeviceOptions) {
-  return useMediaDevices({
-    ...options,
-    filter(device) {
-      return (
-        device.kind === "audioinput" &&
-        (!options?.filter || options.filter(device))
-      );
-    },
-  });
+	return useMediaDevices({
+		...options,
+		filter(device) {
+			return (
+				device.kind === "audioinput" &&
+				(!options?.filter || options.filter(device))
+			);
+		},
+	});
 }
 
 /**
@@ -43,15 +46,15 @@ export function useMediaAudioInputDevices(options?: UseMediaDeviceOptions) {
  * @returns a {@link MediaDeviceState}.
  */
 export function useMediaAudioOutputDevices(options?: UseMediaDeviceOptions) {
-  return useMediaDevices({
-    ...options,
-    filter(device) {
-      return (
-        device.kind === "audiooutput" &&
-        (!options?.filter || options.filter(device))
-      );
-    },
-  });
+	return useMediaDevices({
+		...options,
+		filter(device) {
+			return (
+				device.kind === "audiooutput" &&
+				(!options?.filter || options.filter(device))
+			);
+		},
+	});
 }
 
 /**
@@ -61,13 +64,13 @@ export function useMediaAudioOutputDevices(options?: UseMediaDeviceOptions) {
  * @returns a {@link MediaDeviceState}.
  */
 export function useMediaVideoDevices(options?: UseMediaDeviceOptions) {
-  return useMediaDevices({
-    ...options,
-    filter(device) {
-      return (
-        device.kind.startsWith("video") &&
-        (!options?.filter || options.filter(device))
-      );
-    },
-  });
+	return useMediaDevices({
+		...options,
+		filter(device) {
+			return (
+				device.kind.startsWith("video") &&
+				(!options?.filter || options.filter(device))
+			);
+		},
+	});
 }

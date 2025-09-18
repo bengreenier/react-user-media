@@ -1,4 +1,4 @@
-import { useSyncExternalStore, useCallback, useRef } from "react";
+import { useCallback, useRef, useSyncExternalStore } from "react";
 
 /**
  * Hook that observes {@link MediaStream.getTracks} and provides access
@@ -7,48 +7,48 @@ import { useSyncExternalStore, useCallback, useRef } from "react";
  * @returns an array of {@link MediaStreamTrack}s.
  */
 export function useMediaTracks(media: MediaStream | undefined) {
-  const trackCache = useRef<MediaStreamTrack[]>([]);
+	const trackCache = useRef<MediaStreamTrack[]>([]);
 
-  return useSyncExternalStore(
-    useCallback(
-      function subscribe(callback) {
-        media?.addEventListener("addtrack", callback);
-        media?.addEventListener("removetrack", callback);
+	return useSyncExternalStore(
+		useCallback(
+			function subscribe(callback) {
+				media?.addEventListener("addtrack", callback);
+				media?.addEventListener("removetrack", callback);
 
-        return function unsubscribe() {
-          media?.removeEventListener("addtrack", callback);
-          media?.removeEventListener("removetrack", callback);
-        };
-      },
-      [media],
-    ),
-    useCallback(
-      function getSnapshot() {
-        if (media) {
-          // get tracks _always_ returns a new array
-          // so we can't rely on it's stability
-          const latestTracks = media.getTracks();
+				return function unsubscribe() {
+					media?.removeEventListener("addtrack", callback);
+					media?.removeEventListener("removetrack", callback);
+				};
+			},
+			[media],
+		),
+		useCallback(
+			function getSnapshot() {
+				if (media) {
+					// get tracks _always_ returns a new array
+					// so we can't rely on it's stability
+					const latestTracks = media.getTracks();
 
-          // if the latest tracks and the cached tracks count are the same
-          if (latestTracks.length !== trackCache.current.length) {
-            const latestTrackIds = latestTracks.map((t) => t.id);
-            const cachedTrackIds = trackCache.current.map((t) => t.id);
+					// if the latest tracks and the cached tracks count are the same
+					if (latestTracks.length !== trackCache.current.length) {
+						const latestTrackIds = latestTracks.map((t) => t.id);
+						const cachedTrackIds = trackCache.current.map((t) => t.id);
 
-            // and cachedTrackIds contains all the latestTrackIds
-            if (!latestTrackIds.every((id) => cachedTrackIds.includes(id))) {
-              trackCache.current = latestTracks;
-            }
-          }
-        }
+						// and cachedTrackIds contains all the latestTrackIds
+						if (!latestTrackIds.every((id) => cachedTrackIds.includes(id))) {
+							trackCache.current = latestTracks;
+						}
+					}
+				}
 
-        // in the event of a cache update, this is technically the _last_
-        // cached tracks, but that's by-design as-per the react docs
-        // https://react.dev/reference/react/useSyncExternalStore#im-getting-an-error-the-result-of-getsnapshot-should-be-cached
-        return trackCache.current;
-      },
-      [media],
-    ),
-  );
+				// in the event of a cache update, this is technically the _last_
+				// cached tracks, but that's by-design as-per the react docs
+				// https://react.dev/reference/react/useSyncExternalStore#im-getting-an-error-the-result-of-getsnapshot-should-be-cached
+				return trackCache.current;
+			},
+			[media],
+		),
+	);
 }
 
 /**
@@ -59,7 +59,7 @@ export function useMediaTracks(media: MediaStream | undefined) {
  * @returns an array of audio {@link MediaStreamTrack}s.
  */
 export function useMediaAudioTracks(media: MediaStream | undefined) {
-  return useMediaTracks(media).filter((t) => t.kind === "audio");
+	return useMediaTracks(media).filter((t) => t.kind === "audio");
 }
 
 /**
@@ -70,7 +70,7 @@ export function useMediaAudioTracks(media: MediaStream | undefined) {
  * @returns an array of video {@link MediaStreamTrack}s.
  */
 export function useMediaVideoTracks(media: MediaStream | undefined) {
-  return useMediaTracks(media).filter((t) => t.kind === "video");
+	return useMediaTracks(media).filter((t) => t.kind === "video");
 }
 
 /**
@@ -87,24 +87,24 @@ export type TrackMuteState = "muted" | "unmuted";
  * @returns The {@link TrackMuteState} for the `track`.
  */
 export function useTrackMuteState(track: MediaStreamTrack) {
-  return useSyncExternalStore(
-    useCallback(
-      function subscribe(callback) {
-        track.addEventListener("mute", callback);
-        track.addEventListener("unmute", callback);
+	return useSyncExternalStore(
+		useCallback(
+			function subscribe(callback) {
+				track.addEventListener("mute", callback);
+				track.addEventListener("unmute", callback);
 
-        return function unsubscribe() {
-          track.removeEventListener("mute", callback);
-          track.removeEventListener("unmute", callback);
-        };
-      },
-      [track],
-    ),
-    useCallback(
-      function getSnapshot(): TrackMuteState {
-        return track.muted ? "muted" : "unmuted";
-      },
-      [track],
-    ),
-  );
+				return function unsubscribe() {
+					track.removeEventListener("mute", callback);
+					track.removeEventListener("unmute", callback);
+				};
+			},
+			[track],
+		),
+		useCallback(
+			function getSnapshot(): TrackMuteState {
+				return track.muted ? "muted" : "unmuted";
+			},
+			[track],
+		),
+	);
 }

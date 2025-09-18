@@ -1,66 +1,60 @@
 {
-  "name": "@bengreenier/react-user-media",
-  "description": "A collection of hooks and components for easier access to getUserMedia, getDisplayMedia, and enumerateDevices in React.",
-  "private": false,
-  "exports": {
-    ".": {
-      "types": "./dist/types/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
-    },
-    "./package.json": "./package.json"
-  },
-  "publishConfig": {
-    "access": "public"
-  },
-  "author": {
-    "name": "bengreenier",
-    "url": "https://github.com/bengreenier"
-  },
-  "version": "0.1.2",
-  "type": "module",
-  "licenses": [
-    {
-      "type": "MIT"
-    },
-    {
-      "type": "Apache-2.0"
-    }
-  ],
-  "scripts": {
-    "build": "tsc -p ./tsconfig.types.json --emitDeclarationOnly && tsup --tsconfig ./tsconfig.lib.json --format cjs,esm src/index.ts",
-    "doc": "typedoc --plugin typedoc-github-theme --tsconfig ./tsconfig.lib.json --readme ./README.md --basePath ./src --out ./docs_out --entryPoints ./src/index.ts",
-    "test": "vitest run --coverage",
-    "test-visible": "vitest run --coverage --browser.headless false",
-    "lint": "eslint ."
-  },
-  "peerDependencies": {
-    "react": ">=18"
-  },
-  "dependencies": {},
-  "devDependencies": {
-    "@types/react": "^18.3.4",
-    "@types/react-dom": "^18.3.0",
-    "react": "^18.3.1",
-    "@eslint/js": "^9.9.0",
-    "eslint": "^9.9.0",
-    "eslint-plugin-react-hooks": "^5.1.0-rc.0",
-    "eslint-plugin-react-refresh": "^0.4.9",
-    "globals": "^15.9.0",
-    "typescript": "^5.5.3",
-    "typescript-eslint": "^8.0.1",
-    "vitest": "^2.0.5",
-    "@vitest/browser": "^2.0.5",
-    "@vitest/coverage-istanbul": "^2.0.5",
-    "playwright": "^1.46.1",
-    "@testing-library/react": "^16.0.1",
-    "@testing-library/dom": "^10.4.0",
-    "@testing-library/jest-dom": "^6.5.0",
-    "typedoc": "^0.26.6",
-    "typedoc-github-theme": "^0.1.2"
-  },
-  "files": [
-    "dist",
-    "README.md"
-  ]
+	"name": "@bengreenier/react-user-media",
+	"description": "A collection of hooks and components for easier access to getUserMedia, getDisplayMedia, and enumerateDevices in React.",
+	"private": false,
+	"exports": {
+		".": {
+			"types": "./dist/types/index.d.ts",
+			"import": "./dist/index.js",
+			"require": "./dist/index.cjs"
+		},
+		"./package.json": "./package.json"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"author": {
+		"name": "bengreenier",
+		"url": "https://github.com/bengreenier"
+	},
+	"version": "0.1.2",
+	"type": "module",
+	"licenses": [
+		{
+			"type": "MIT"
+		},
+		{
+			"type": "Apache-2.0"
+		}
+	],
+	"scripts": {
+		"build": "tsc -p ./tsconfig.types.json --emitDeclarationOnly && tsup --tsconfig ./tsconfig.lib.json --format cjs,esm src/index.ts",
+		"doc": "typedoc --plugin typedoc-github-theme --tsconfig ./tsconfig.lib.json --readme ./README.md --basePath ./src --out ./docs_out --entryPoints ./src/index.ts",
+		"test": "vitest run --coverage",
+		"test-visible": "vitest run --coverage --browser.headless false",
+		"lint": "biome check"
+	},
+	"peerDependencies": {
+		"react": ">=19"
+	},
+	"devDependencies": {
+		"@testing-library/dom": "^10.4.1",
+		"@testing-library/jest-dom": "^6.8.0",
+		"@testing-library/react": "^16.3.0",
+		"@types/react": "^19.1.13",
+		"@types/react-dom": "^19.1.9",
+		"@vitest/browser": "^3.2.4",
+		"@vitest/coverage-istanbul": "^3.2.4",
+		"globals": "^16.4.0",
+		"playwright": "^1.55.0",
+		"react": "^19.1.1",
+		"typedoc": "^0.28.13",
+		"typedoc-github-theme": "^0.3.1",
+		"typescript": "^5.9.2",
+		"vitest": "^3.2.4"
+	},
+	"files": [
+		"dist",
+		"README.md"
+	]
 }
