@@ -97,6 +97,13 @@ interface RecorderStateBase {
 	segments: Blob[];
 
 	/**
+	 * The mimeType used for recording.
+	 *
+	 * Default: `""`
+	 */
+	mimeType: string | null;
+
+	/**
 	 * Starts recording `media` with this recorder.
 	 * @param media the media to record.
 	 * @param options the optional options for recording.
@@ -120,6 +127,7 @@ interface RecorderErrorState extends RecorderStateBase {
 	startTime: null;
 	endTime: null;
 	segments: [];
+	mimeType: null;
 }
 
 /**
@@ -133,6 +141,7 @@ interface RecorderRecordingState extends RecorderStateBase {
 	startTime: DOMHighResTimeStamp;
 	endTime: null;
 	segments: [];
+	mimeType: null;
 }
 
 /**
@@ -146,6 +155,7 @@ interface RecorderFinalizedState extends RecorderStateBase {
 	startTime: DOMHighResTimeStamp;
 	endTime: DOMHighResTimeStamp;
 	segments: Blob[];
+	mimeType: string;
 }
 
 /**
@@ -184,6 +194,7 @@ export function useMediaRecorder(): RecorderState {
 	const [endTime, setEndTime] = useState<DOMHighResTimeStamp | null>(null);
 
 	const [segments, setSegments] = useState<Blob[]>([]);
+	const [mimeType, setMimeType] = useState<string | null>(null);
 	const isFinalized = useMemo(
 		() =>
 			segments.length > 0 && recorderState === "inactive" && endTime !== null,
@@ -212,6 +223,7 @@ export function useMediaRecorder(): RecorderState {
 		});
 
 		setSegments([]);
+		setMimeType(recorderOptions.mimeType ?? "");
 		setEndTime(null);
 
 		const startTime = performance.now();
@@ -245,6 +257,7 @@ export function useMediaRecorder(): RecorderState {
 		segments,
 		startTime,
 		endTime,
+		mimeType,
 		startRecording,
 		stopRecording,
 	} satisfies ShallowShapeOf<RecorderState>;
