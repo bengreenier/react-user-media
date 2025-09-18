@@ -195,9 +195,13 @@ export function useMediaRecorder(): RecorderState {
 
 	const [segments, setSegments] = useState<Blob[]>([]);
 	const [mimeType, setMimeType] = useState<string | null>(null);
+
+	// Note: In safari, a zero-sized blob is created immediately - this requires us to `reduce` below, rather than just checking `segments.length > 0`
 	const isFinalized = useMemo(
 		() =>
-			segments.length > 0 && recorderState === "inactive" && endTime !== null,
+			segments.reduce((p, c) => p + c.size, 0) > 0 &&
+			recorderState === "inactive" &&
+			endTime !== null,
 		[segments, recorderState, endTime],
 	);
 
