@@ -1,5 +1,5 @@
 /**
- * Core types for media worker operations
+ * Core types for WebCodecs-based media worker operations
  */
 
 /**
@@ -7,13 +7,18 @@
  */
 export type MediaWorkerMessageType = 
   | 'INIT'
-  | 'START_RECORDING'
-  | 'STOP_RECORDING'
-  | 'PROCESS_MEDIA'
-  | 'GET_DEVICES'
+  | 'PROCESS_VIDEO_FRAME'
+  | 'PROCESS_AUDIO_DATA'
+  | 'ENCODE_VIDEO'
+  | 'ENCODE_AUDIO'
+  | 'DECODE_VIDEO'
+  | 'DECODE_AUDIO'
+  | 'CONFIGURE_CODEC'
+  | 'GET_CODEC_CAPABILITIES'
   | 'ERROR'
   | 'SUCCESS'
-  | 'DATA_AVAILABLE';
+  | 'FRAME_PROCESSED'
+  | 'ENCODED_DATA';
 
 /**
  * Base message structure for worker communication
@@ -26,32 +31,91 @@ export interface MediaWorkerMessage<T = unknown> {
 }
 
 /**
- * Recording configuration for worker operations
+ * Video processing configuration
  */
-export interface MediaWorkerRecordingConfig {
-  mimeType?: string;
-  timeslice?: number;
-  videoBitsPerSecond?: number;
-  audioBitsPerSecond?: number;
-  bitsPerSecond?: number;
+export interface VideoProcessingConfig {
+  width?: number;
+  height?: number;
+  frameRate?: number;
+  bitrate?: number;
+  codec?: string;
+  format?: 'I420' | 'I422' | 'I444' | 'NV12' | 'RGBA' | 'BGRA' | 'RGB24' | 'BGR24';
 }
 
 /**
- * Media processing options
+ * Audio processing configuration
  */
-export interface MediaWorkerProcessingOptions {
-  operation: 'compress' | 'convert' | 'extract_audio' | 'extract_video' | 'resize';
-  options?: Record<string, unknown>;
+export interface AudioProcessingConfig {
+  sampleRate?: number;
+  channels?: number;
+  bitDepth?: number;
+  codec?: string;
+  format?: 'f32' | 's16' | 's24' | 's32';
 }
 
 /**
- * Device information from worker
+ * Video frame processing options
  */
-export interface MediaWorkerDeviceInfo {
-  deviceId: string;
-  kind: MediaDeviceKind;
-  label: string;
-  groupId: string;
+export interface VideoFrameProcessingOptions {
+  operation: 'resize' | 'crop' | 'rotate' | 'filter' | 'convert_format' | 'extract_region';
+  options?: {
+    width?: number;
+    height?: number;
+    x?: number;
+    y?: number;
+    angle?: number;
+    filter?: string;
+    format?: string;
+  };
+}
+
+/**
+ * Audio data processing options
+ */
+export interface AudioDataProcessingOptions {
+  operation: 'resample' | 'mix' | 'filter' | 'normalize' | 'convert_format' | 'extract_channels';
+  options?: {
+    sampleRate?: number;
+    channels?: number;
+    format?: string;
+    filter?: string;
+    gain?: number;
+  };
+}
+
+/**
+ * Codec capabilities information
+ */
+export interface CodecCapabilities {
+  supported: boolean;
+  codec: string;
+  hardwareAccelerated: boolean;
+  maxWidth?: number;
+  maxHeight?: number;
+  maxFrameRate?: number;
+  maxBitrate?: number;
+}
+
+/**
+ * Processed video frame result
+ */
+export interface ProcessedVideoFrame {
+  data: ArrayBuffer;
+  width: number;
+  height: number;
+  format: string;
+  timestamp: number;
+}
+
+/**
+ * Processed audio data result
+ */
+export interface ProcessedAudioData {
+  data: ArrayBuffer;
+  sampleRate: number;
+  channels: number;
+  format: string;
+  duration: number;
 }
 
 /**
@@ -59,17 +123,15 @@ export interface MediaWorkerDeviceInfo {
  */
 export interface MediaWorkerState {
   isInitialized: boolean;
-  isRecording: boolean;
   isProcessing: boolean;
   error: string | null;
-  recordingStartTime: number | null;
-  recordingEndTime: number | null;
-  segments: Blob[];
-  mimeType: string | null;
+  videoConfig: VideoProcessingConfig | null;
+  audioConfig: AudioProcessingConfig | null;
+  codecCapabilities: CodecCapabilities[];
 }
 
 /**
- * Worker controller interface for abstraction
+ * Worker controller interface for WebCodecs operations
  */
 export interface MediaWorkerController {
   /**
@@ -78,24 +140,65 @@ export interface MediaWorkerController {
   initialize(): Promise<void>;
   
   /**
-   * Start recording with the given configuration
+   * Process a video frame
    */
-  startRecording(config?: MediaWorkerRecordingConfig): Promise<void>;
+  processVideoFrame(
+    frame: VideoFrame, 
+    options: VideoFrameProcessingOptions
+  ): Promise<ProcessedVideoFrame>;
   
   /**
-   * Stop recording
+   * Process audio data
    */
-  stopRecording(): Promise<Blob[]>;
+  processAudioData(
+    data: AudioData, 
+    options: AudioDataProcessingOptions
+  ): Promise<ProcessedAudioData>;
   
   /**
-   * Process media data
+   * Encode video frames
    */
-  processMedia(data: Blob, options: MediaWorkerProcessingOptions): Promise<Blob>;
+  encodeVideo(
+    frames: VideoFrame[], 
+    config: VideoProcessingConfig
+  ): Promise<EncodedVideoChunk[]>;
   
   /**
-   * Get available media devices
+   * Encode audio data
    */
-  getDevices(): Promise<MediaWorkerDeviceInfo[]>;
+  encodeAudio(
+    data: AudioData[], 
+    config: AudioProcessingConfig
+  ): Promise<EncodedAudioChunk[]>;
+  
+  /**
+   * Decode video chunks
+   */
+  decodeVideo(
+    chunks: EncodedVideoChunk[], 
+    config: VideoProcessingConfig
+  ): Promise<VideoFrame[]>;
+  
+  /**
+   * Decode audio chunks
+   */
+  decodeAudio(
+    chunks: EncodedAudioChunk[], 
+    config: AudioProcessingConfig
+  ): Promise<AudioData[]>;
+  
+  /**
+   * Configure codec
+   */
+  configureCodec(
+    type: 'video' | 'audio',
+    config: VideoProcessingConfig | AudioProcessingConfig
+  ): Promise<void>;
+  
+  /**
+   * Get codec capabilities
+   */
+  getCodecCapabilities(): Promise<CodecCapabilities[]>;
   
   /**
    * Get current worker state

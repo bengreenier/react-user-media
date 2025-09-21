@@ -1,9 +1,13 @@
 import type {
   MediaWorkerController,
   MediaWorkerMessage,
-  MediaWorkerRecordingConfig,
-  MediaWorkerProcessingOptions,
-  MediaWorkerDeviceInfo,
+  VideoProcessingConfig,
+  AudioProcessingConfig,
+  VideoFrameProcessingOptions,
+  AudioDataProcessingOptions,
+  CodecCapabilities,
+  ProcessedVideoFrame,
+  ProcessedAudioData,
   MediaWorkerState,
 } from './types';
 
@@ -14,13 +18,11 @@ export class WebMediaWorkerController implements MediaWorkerController {
   private worker: Worker | null = null;
   private state: MediaWorkerState = {
     isInitialized: false,
-    isRecording: false,
     isProcessing: false,
     error: null,
-    recordingStartTime: null,
-    recordingEndTime: null,
-    segments: [],
-    mimeType: null,
+    videoConfig: null,
+    audioConfig: null,
+    codecCapabilities: [],
   };
 
   private subscribers: Set<(message: MediaWorkerMessage) => void> = new Set();
@@ -55,93 +57,277 @@ export class WebMediaWorkerController implements MediaWorkerController {
 
   private createDefaultWorker(): Worker {
     const workerScript = `
-      // Default media worker implementation
-      let mediaRecorder = null;
-      let recordingConfig = null;
-      let segments = [];
-      let isRecording = false;
+      // WebCodecs-based media worker implementation
+      let videoEncoder = null;
+      let audioEncoder = null;
+      let videoDecoder = null;
+      let audioDecoder = null;
+      let videoConfig = null;
+      let audioConfig = null;
+      let codecCapabilities = [];
 
-      self.onmessage = function(e) {
+      // Initialize codec capabilities
+      async function initCodecCapabilities() {
+        try {
+          // Check video codec support
+          const videoCodecs = [
+            'avc1.42E01E', // H.264 Baseline
+            'vp8',
+            'vp9',
+            'av01.0.08M.08', // AV1 Main
+          ];
+
+          for (const codec of videoCodecs) {
+            try {
+              const support = await VideoEncoder.isConfigSupported({
+                codec,
+                width: 1920,
+                height: 1080,
+                bitrate: 1000000,
+                framerate: 30,
+              });
+              
+              codecCapabilities.push({
+                supported: support.supported,
+                codec,
+                hardwareAccelerated: support.config?.hardwareAcceleration === 'prefer-hardware',
+                maxWidth: 4096,
+                maxHeight: 4096,
+                maxFrameRate: 60,
+                maxBitrate: 100000000,
+              });
+            } catch (e) {
+              // Codec not supported
+            }
+          }
+
+          // Check audio codec support
+          const audioCodecs = [
+            'mp4a.40.2', // AAC-LC
+            'opus',
+          ];
+
+          for (const codec of audioCodecs) {
+            try {
+              const support = await AudioEncoder.isConfigSupported({
+                codec,
+                sampleRate: 48000,
+                numberOfChannels: 2,
+                bitrate: 128000,
+              });
+              
+              codecCapabilities.push({
+                supported: support.supported,
+                codec,
+                hardwareAccelerated: support.config?.hardwareAcceleration === 'prefer-hardware',
+                maxBitrate: 320000,
+              });
+            } catch (e) {
+              // Codec not supported
+            }
+          }
+        } catch (error) {
+          console.error('Error initializing codec capabilities:', error);
+        }
+      }
+
+      self.onmessage = async function(e) {
         const { id, type, payload } = e.data;
         
         try {
           switch (type) {
             case 'INIT':
-              self.postMessage({ id, type: 'SUCCESS', payload: { message: 'Worker initialized' } });
+              await initCodecCapabilities();
+              self.postMessage({ 
+                id, 
+                type: 'SUCCESS', 
+                payload: { 
+                  message: 'Worker initialized',
+                  capabilities: codecCapabilities 
+                } 
+              });
               break;
               
-            case 'START_RECORDING':
-              if (isRecording) {
-                throw new Error('Already recording');
+            case 'PROCESS_VIDEO_FRAME':
+              // Process video frame using WebCodecs
+              const frame = payload.frame;
+              const options = payload.options;
+              
+              // Create a canvas to process the frame
+              const canvas = new OffscreenCanvas(frame.displayWidth, frame.displayHeight);
+              const ctx = canvas.getContext('2d');
+              
+              // Draw frame to canvas
+              ctx.drawImage(frame, 0, 0);
+              
+              // Apply processing based on options
+              if (options.operation === 'resize' && options.options) {
+                const { width, height } = options.options;
+                const resizedCanvas = new OffscreenCanvas(width, height);
+                const resizedCtx = resizedCanvas.getContext('2d');
+                resizedCtx.drawImage(canvas, 0, 0, width, height);
+                
+                const imageData = resizedCtx.getImageData(0, 0, width, height);
+                const processedFrame = {
+                  data: imageData.data.buffer,
+                  width,
+                  height,
+                  format: 'RGBA',
+                  timestamp: performance.now(),
+                };
+                
+                self.postMessage({ 
+                  id, 
+                  type: 'FRAME_PROCESSED', 
+                  payload: { frame: processedFrame } 
+                });
+              } else {
+                // Default processing
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const processedFrame = {
+                  data: imageData.data.buffer,
+                  width: canvas.width,
+                  height: canvas.height,
+                  format: 'RGBA',
+                  timestamp: performance.now(),
+                };
+                
+                self.postMessage({ 
+                  id, 
+                  type: 'FRAME_PROCESSED', 
+                  payload: { frame: processedFrame } 
+                });
+              }
+              break;
+              
+            case 'PROCESS_AUDIO_DATA':
+              // Process audio data using WebCodecs
+              const audioData = payload.data;
+              const audioOptions = payload.options;
+              
+              // Simple audio processing simulation
+              const processedAudio = {
+                data: audioData.data.buffer,
+                sampleRate: audioOptions.options?.sampleRate || audioData.sampleRate,
+                channels: audioOptions.options?.channels || audioData.numberOfChannels,
+                format: audioOptions.options?.format || 'f32',
+                duration: audioData.numberOfFrames / audioData.sampleRate,
+              };
+              
+              self.postMessage({ 
+                id, 
+                type: 'SUCCESS', 
+                payload: { audio: processedAudio } 
+              });
+              break;
+              
+            case 'ENCODE_VIDEO':
+              // Encode video frames
+              const frames = payload.frames;
+              const vConfig = payload.config;
+              
+              if (!videoEncoder) {
+                videoEncoder = new VideoEncoder({
+                  output: (chunk) => {
+                    self.postMessage({ 
+                      id, 
+                      type: 'ENCODED_DATA', 
+                      payload: { chunks: [chunk], type: 'video' } 
+                    });
+                  },
+                  error: (error) => {
+                    self.postMessage({ 
+                      id, 
+                      type: 'ERROR', 
+                      error: error.message 
+                    });
+                  }
+                });
               }
               
-              recordingConfig = payload;
-              isRecording = true;
-              segments = [];
-              
-              // In a real implementation, you would set up MediaRecorder here
-              // For now, we'll simulate the behavior
-              self.postMessage({ 
-                id, 
-                type: 'SUCCESS', 
-                payload: { message: 'Recording started' } 
+              videoEncoder.configure({
+                codec: vConfig.codec || 'vp8',
+                width: vConfig.width || 1920,
+                height: vConfig.height || 1080,
+                bitrate: vConfig.bitrate || 1000000,
+                framerate: vConfig.frameRate || 30,
               });
-              break;
               
-            case 'STOP_RECORDING':
-              if (!isRecording) {
-                throw new Error('Not currently recording');
+              for (const frame of frames) {
+                videoEncoder.encode(frame);
               }
               
-              isRecording = false;
-              
-              // Simulate recording data
-              const mockBlob = new Blob(['mock recording data'], { 
-                type: recordingConfig?.mimeType || 'video/webm' 
-              });
-              segments = [mockBlob];
-              
               self.postMessage({ 
                 id, 
                 type: 'SUCCESS', 
-                payload: { message: 'Recording stopped', segments } 
+                payload: { message: 'Video encoding started' } 
               });
               break;
               
-            case 'PROCESS_MEDIA':
-              // Simulate media processing
-              const processedData = new Blob([\`processed_\${payload.data.size}_bytes\`], { 
-                type: payload.data.type 
+            case 'ENCODE_AUDIO':
+              // Encode audio data
+              const audioFrames = payload.data;
+              const aConfig = payload.config;
+              
+              if (!audioEncoder) {
+                audioEncoder = new AudioEncoder({
+                  output: (chunk) => {
+                    self.postMessage({ 
+                      id, 
+                      type: 'ENCODED_DATA', 
+                      payload: { chunks: [chunk], type: 'audio' } 
+                    });
+                  },
+                  error: (error) => {
+                    self.postMessage({ 
+                      id, 
+                      type: 'ERROR', 
+                      error: error.message 
+                    });
+                  }
+                });
+              }
+              
+              audioEncoder.configure({
+                codec: aConfig.codec || 'mp4a.40.2',
+                sampleRate: aConfig.sampleRate || 48000,
+                numberOfChannels: aConfig.channels || 2,
+                bitrate: aConfig.bitrate || 128000,
               });
+              
+              for (const audioData of audioFrames) {
+                audioEncoder.encode(audioData);
+              }
               
               self.postMessage({ 
                 id, 
                 type: 'SUCCESS', 
-                payload: { message: 'Media processed', result: processedData } 
+                payload: { message: 'Audio encoding started' } 
               });
               break;
               
-            case 'GET_DEVICES':
-              // Simulate device enumeration
-              const devices = [
-                {
-                  deviceId: 'camera-1',
-                  kind: 'videoinput',
-                  label: 'Camera 1',
-                  groupId: 'group-1'
-                },
-                {
-                  deviceId: 'microphone-1',
-                  kind: 'audioinput',
-                  label: 'Microphone 1',
-                  groupId: 'group-1'
-                }
-              ];
+            case 'CONFIGURE_CODEC':
+              const codecType = payload.type;
+              const config = payload.config;
+              
+              if (codecType === 'video') {
+                videoConfig = config;
+              } else {
+                audioConfig = config;
+              }
               
               self.postMessage({ 
                 id, 
                 type: 'SUCCESS', 
-                payload: { message: 'Devices retrieved', devices } 
+                payload: { message: \`\${codecType} codec configured\` } 
+              });
+              break;
+              
+            case 'GET_CODEC_CAPABILITIES':
+              self.postMessage({ 
+                id, 
+                type: 'SUCCESS', 
+                payload: { capabilities: codecCapabilities } 
               });
               break;
               
@@ -201,23 +387,19 @@ export class WebMediaWorkerController implements MediaWorkerController {
         if (message.payload?.message === 'Worker initialized') {
           this.state.isInitialized = true;
           this.state.error = null;
-        } else if (message.payload?.message === 'Recording started') {
-          this.state.isRecording = true;
-          this.state.recordingStartTime = performance.now();
-          this.state.segments = [];
-        } else if (message.payload?.message === 'Recording stopped') {
-          this.state.isRecording = false;
-          this.state.recordingEndTime = performance.now();
-          this.state.segments = message.payload.segments || [];
+          this.state.codecCapabilities = message.payload.capabilities || [];
+        } else if (message.payload?.message?.includes('codec configured')) {
+          // Codec configuration handled in individual methods
         }
         break;
       case 'ERROR':
         this.state.error = message.error || 'Unknown error';
         break;
-      case 'DATA_AVAILABLE':
-        if (message.payload?.data) {
-          this.state.segments.push(message.payload.data);
-        }
+      case 'FRAME_PROCESSED':
+        // Frame processing completed
+        break;
+      case 'ENCODED_DATA':
+        // Encoding completed
         break;
     }
   }
@@ -226,28 +408,10 @@ export class WebMediaWorkerController implements MediaWorkerController {
     return this.sendMessage('INIT');
   }
 
-  async startRecording(config?: MediaWorkerRecordingConfig): Promise<void> {
-    if (!this.state.isInitialized) {
-      throw new Error('Worker not initialized');
-    }
-    if (this.state.isRecording) {
-      throw new Error('Already recording');
-    }
-
-    this.state.mimeType = config?.mimeType || 'video/webm';
-    return this.sendMessage('START_RECORDING', config);
-  }
-
-  async stopRecording(): Promise<Blob[]> {
-    if (!this.state.isRecording) {
-      throw new Error('Not currently recording');
-    }
-
-    const result = await this.sendMessage('STOP_RECORDING');
-    return result.segments || [];
-  }
-
-  async processMedia(data: Blob, options: MediaWorkerProcessingOptions): Promise<Blob> {
+  async processVideoFrame(
+    frame: VideoFrame, 
+    options: VideoFrameProcessingOptions
+  ): Promise<ProcessedVideoFrame> {
     if (!this.state.isInitialized) {
       throw new Error('Worker not initialized');
     }
@@ -255,20 +419,123 @@ export class WebMediaWorkerController implements MediaWorkerController {
     this.state.isProcessing = true;
     
     try {
-      const result = await this.sendMessage('PROCESS_MEDIA', { data, options });
-      return result.result;
+      const result = await this.sendMessage('PROCESS_VIDEO_FRAME', { frame, options });
+      return result.frame;
     } finally {
       this.state.isProcessing = false;
     }
   }
 
-  async getDevices(): Promise<MediaWorkerDeviceInfo[]> {
+  async processAudioData(
+    data: AudioData, 
+    options: AudioDataProcessingOptions
+  ): Promise<ProcessedAudioData> {
     if (!this.state.isInitialized) {
       throw new Error('Worker not initialized');
     }
 
-    const result = await this.sendMessage('GET_DEVICES');
-    return result.devices || [];
+    this.state.isProcessing = true;
+    
+    try {
+      const result = await this.sendMessage('PROCESS_AUDIO_DATA', { data, options });
+      return result.audio;
+    } finally {
+      this.state.isProcessing = false;
+    }
+  }
+
+  async encodeVideo(
+    frames: VideoFrame[], 
+    config: VideoProcessingConfig
+  ): Promise<EncodedVideoChunk[]> {
+    if (!this.state.isInitialized) {
+      throw new Error('Worker not initialized');
+    }
+
+    this.state.isProcessing = true;
+    this.state.videoConfig = config;
+    
+    try {
+      const result = await this.sendMessage('ENCODE_VIDEO', { frames, config });
+      return result.chunks || [];
+    } finally {
+      this.state.isProcessing = false;
+    }
+  }
+
+  async encodeAudio(
+    data: AudioData[], 
+    config: AudioProcessingConfig
+  ): Promise<EncodedAudioChunk[]> {
+    if (!this.state.isInitialized) {
+      throw new Error('Worker not initialized');
+    }
+
+    this.state.isProcessing = true;
+    this.state.audioConfig = config;
+    
+    try {
+      const result = await this.sendMessage('ENCODE_AUDIO', { data, config });
+      return result.chunks || [];
+    } finally {
+      this.state.isProcessing = false;
+    }
+  }
+
+  async decodeVideo(
+    chunks: EncodedVideoChunk[], 
+    config: VideoProcessingConfig
+  ): Promise<VideoFrame[]> {
+    if (!this.state.isInitialized) {
+      throw new Error('Worker not initialized');
+    }
+
+    this.state.isProcessing = true;
+    
+    try {
+      const result = await this.sendMessage('DECODE_VIDEO', { chunks, config });
+      return result.frames || [];
+    } finally {
+      this.state.isProcessing = false;
+    }
+  }
+
+  async decodeAudio(
+    chunks: EncodedAudioChunk[], 
+    config: AudioProcessingConfig
+  ): Promise<AudioData[]> {
+    if (!this.state.isInitialized) {
+      throw new Error('Worker not initialized');
+    }
+
+    this.state.isProcessing = true;
+    
+    try {
+      const result = await this.sendMessage('DECODE_AUDIO', { chunks, config });
+      return result.audioData || [];
+    } finally {
+      this.state.isProcessing = false;
+    }
+  }
+
+  async configureCodec(
+    type: 'video' | 'audio',
+    config: VideoProcessingConfig | AudioProcessingConfig
+  ): Promise<void> {
+    if (!this.state.isInitialized) {
+      throw new Error('Worker not initialized');
+    }
+
+    return this.sendMessage('CONFIGURE_CODEC', { type, config });
+  }
+
+  async getCodecCapabilities(): Promise<CodecCapabilities[]> {
+    if (!this.state.isInitialized) {
+      throw new Error('Worker not initialized');
+    }
+
+    const result = await this.sendMessage('GET_CODEC_CAPABILITIES');
+    return result.capabilities || [];
   }
 
   getState(): MediaWorkerState {
@@ -290,13 +557,11 @@ export class WebMediaWorkerController implements MediaWorkerController {
     
     this.state = {
       isInitialized: false,
-      isRecording: false,
       isProcessing: false,
       error: null,
-      recordingStartTime: null,
-      recordingEndTime: null,
-      segments: [],
-      mimeType: null,
+      videoConfig: null,
+      audioConfig: null,
+      codecCapabilities: [],
     };
     
     this.subscribers.clear();

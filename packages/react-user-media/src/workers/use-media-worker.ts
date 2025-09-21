@@ -3,9 +3,13 @@ import type { ShallowShapeOf } from '../types';
 import type {
   MediaWorkerController,
   MediaWorkerState,
-  MediaWorkerRecordingConfig,
-  MediaWorkerProcessingOptions,
-  MediaWorkerDeviceInfo,
+  VideoProcessingConfig,
+  AudioProcessingConfig,
+  VideoFrameProcessingOptions,
+  AudioDataProcessingOptions,
+  CodecCapabilities,
+  ProcessedVideoFrame,
+  ProcessedAudioData,
   MediaWorkerMessage,
 } from './types';
 import { getWorkerFactory } from './worker-factory';
@@ -48,11 +52,6 @@ export interface MediaWorkerHookState {
   isInitialized: boolean;
   
   /**
-   * Whether the worker is currently recording
-   */
-  isRecording: boolean;
-  
-  /**
    * Whether the worker is currently processing media
    */
   isProcessing: boolean;
@@ -73,14 +72,14 @@ export interface MediaWorkerHookState {
   workerState: MediaWorkerState;
   
   /**
-   * Available media devices
+   * Available codec capabilities
    */
-  devices: MediaWorkerDeviceInfo[];
+  codecCapabilities: CodecCapabilities[];
   
   /**
-   * Whether devices are being loaded
+   * Whether codec capabilities are being loaded
    */
-  isLoadingDevices: boolean;
+  isLoadingCapabilities: boolean;
   
   /**
    * Initialize the worker
@@ -88,24 +87,65 @@ export interface MediaWorkerHookState {
   initialize(): Promise<void>;
   
   /**
-   * Start recording with the given configuration
+   * Process a video frame
    */
-  startRecording(config?: MediaWorkerRecordingConfig): Promise<void>;
+  processVideoFrame(
+    frame: VideoFrame, 
+    options: VideoFrameProcessingOptions
+  ): Promise<ProcessedVideoFrame>;
   
   /**
-   * Stop recording and return recorded segments
+   * Process audio data
    */
-  stopRecording(): Promise<Blob[]>;
+  processAudioData(
+    data: AudioData, 
+    options: AudioDataProcessingOptions
+  ): Promise<ProcessedAudioData>;
   
   /**
-   * Process media data
+   * Encode video frames
    */
-  processMedia(data: Blob, options: MediaWorkerProcessingOptions): Promise<Blob>;
+  encodeVideo(
+    frames: VideoFrame[], 
+    config: VideoProcessingConfig
+  ): Promise<EncodedVideoChunk[]>;
   
   /**
-   * Get available media devices
+   * Encode audio data
    */
-  getDevices(): Promise<MediaWorkerDeviceInfo[]>;
+  encodeAudio(
+    data: AudioData[], 
+    config: AudioProcessingConfig
+  ): Promise<EncodedAudioChunk[]>;
+  
+  /**
+   * Decode video chunks
+   */
+  decodeVideo(
+    chunks: EncodedVideoChunk[], 
+    config: VideoProcessingConfig
+  ): Promise<VideoFrame[]>;
+  
+  /**
+   * Decode audio chunks
+   */
+  decodeAudio(
+    chunks: EncodedAudioChunk[], 
+    config: AudioProcessingConfig
+  ): Promise<AudioData[]>;
+  
+  /**
+   * Configure codec
+   */
+  configureCodec(
+    type: 'video' | 'audio',
+    config: VideoProcessingConfig | AudioProcessingConfig
+  ): Promise<void>;
+  
+  /**
+   * Get codec capabilities
+   */
+  getCodecCapabilities(): Promise<CodecCapabilities[]>;
   
   /**
    * Subscribe to worker messages
@@ -142,8 +182,8 @@ export function useMediaWorker(config: UseMediaWorkerConfig = {}): MediaWorkerHo
     mimeType: null,
   });
 
-  const [devices, setDevices] = useState<MediaWorkerDeviceInfo[]>([]);
-  const [isLoadingDevices, setIsLoadingDevices] = useState(false);
+  const [codecCapabilities, setCodecCapabilities] = useState<CodecCapabilities[]>([]);
+  const [isLoadingCapabilities, setIsLoadingCapabilities] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const workerRef = useRef<MediaWorkerController | null>(null);
@@ -201,59 +241,125 @@ export function useMediaWorker(config: UseMediaWorkerConfig = {}): MediaWorkerHo
     }
   }, [getWorker]);
 
-  const startRecording = useCallback(async (config?: MediaWorkerRecordingConfig): Promise<void> => {
+  const processVideoFrame = useCallback(async (
+    frame: VideoFrame,
+    options: VideoFrameProcessingOptions
+  ): Promise<ProcessedVideoFrame> => {
     try {
       setError(null);
       const worker = getWorker();
-      await worker.startRecording(config);
+      return await worker.processVideoFrame(frame, options);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to start recording';
+      const errorMessage = err instanceof Error ? err.message : 'Failed to process video frame';
       setError(errorMessage);
       throw err;
     }
   }, [getWorker]);
 
-  const stopRecording = useCallback(async (): Promise<Blob[]> => {
+  const processAudioData = useCallback(async (
+    data: AudioData,
+    options: AudioDataProcessingOptions
+  ): Promise<ProcessedAudioData> => {
     try {
       setError(null);
       const worker = getWorker();
-      return await worker.stopRecording();
+      return await worker.processAudioData(data, options);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to stop recording';
+      const errorMessage = err instanceof Error ? err.message : 'Failed to process audio data';
       setError(errorMessage);
       throw err;
     }
   }, [getWorker]);
 
-  const processMedia = useCallback(async (
-    data: Blob,
-    options: MediaWorkerProcessingOptions
-  ): Promise<Blob> => {
+  const encodeVideo = useCallback(async (
+    frames: VideoFrame[],
+    config: VideoProcessingConfig
+  ): Promise<EncodedVideoChunk[]> => {
     try {
       setError(null);
       const worker = getWorker();
-      return await worker.processMedia(data, options);
+      return await worker.encodeVideo(frames, config);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to process media';
+      const errorMessage = err instanceof Error ? err.message : 'Failed to encode video';
       setError(errorMessage);
       throw err;
     }
   }, [getWorker]);
 
-  const getDevices = useCallback(async (): Promise<MediaWorkerDeviceInfo[]> => {
+  const encodeAudio = useCallback(async (
+    data: AudioData[],
+    config: AudioProcessingConfig
+  ): Promise<EncodedAudioChunk[]> => {
     try {
-      setIsLoadingDevices(true);
       setError(null);
       const worker = getWorker();
-      const deviceList = await worker.getDevices();
-      setDevices(deviceList);
-      return deviceList;
+      return await worker.encodeAudio(data, config);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to get devices';
+      const errorMessage = err instanceof Error ? err.message : 'Failed to encode audio';
+      setError(errorMessage);
+      throw err;
+    }
+  }, [getWorker]);
+
+  const decodeVideo = useCallback(async (
+    chunks: EncodedVideoChunk[],
+    config: VideoProcessingConfig
+  ): Promise<VideoFrame[]> => {
+    try {
+      setError(null);
+      const worker = getWorker();
+      return await worker.decodeVideo(chunks, config);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to decode video';
+      setError(errorMessage);
+      throw err;
+    }
+  }, [getWorker]);
+
+  const decodeAudio = useCallback(async (
+    chunks: EncodedAudioChunk[],
+    config: AudioProcessingConfig
+  ): Promise<AudioData[]> => {
+    try {
+      setError(null);
+      const worker = getWorker();
+      return await worker.decodeAudio(chunks, config);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to decode audio';
+      setError(errorMessage);
+      throw err;
+    }
+  }, [getWorker]);
+
+  const configureCodec = useCallback(async (
+    type: 'video' | 'audio',
+    config: VideoProcessingConfig | AudioProcessingConfig
+  ): Promise<void> => {
+    try {
+      setError(null);
+      const worker = getWorker();
+      return await worker.configureCodec(type, config);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to configure codec';
+      setError(errorMessage);
+      throw err;
+    }
+  }, [getWorker]);
+
+  const getCodecCapabilities = useCallback(async (): Promise<CodecCapabilities[]> => {
+    try {
+      setIsLoadingCapabilities(true);
+      setError(null);
+      const worker = getWorker();
+      const capabilities = await worker.getCodecCapabilities();
+      setCodecCapabilities(capabilities);
+      return capabilities;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to get codec capabilities';
       setError(errorMessage);
       throw err;
     } finally {
-      setIsLoadingDevices(false);
+      setIsLoadingCapabilities(false);
     }
   }, [getWorker]);
 
@@ -270,38 +376,38 @@ export function useMediaWorker(config: UseMediaWorkerConfig = {}): MediaWorkerHo
     factoryRef.current.removeWorker(workerId);
     setWorkerState({
       isInitialized: false,
-      isRecording: false,
       isProcessing: false,
       error: null,
-      recordingStartTime: null,
-      recordingEndTime: null,
-      segments: [],
-      mimeType: null,
+      videoConfig: null,
+      audioConfig: null,
+      codecCapabilities: [],
     });
-    setDevices([]);
+    setCodecCapabilities([]);
     setError(null);
   }, [workerId]);
 
   // Computed state
   const isInitialized = useMemo(() => workerState.isInitialized, [workerState.isInitialized]);
-  const isRecording = useMemo(() => workerState.isRecording, [workerState.isRecording]);
   const isProcessing = useMemo(() => workerState.isProcessing, [workerState.isProcessing]);
   const isError = useMemo(() => error !== null || workerState.error !== null, [error, workerState.error]);
 
   const state: MediaWorkerHookState = {
     isInitialized,
-    isRecording,
     isProcessing,
     isError,
     error: error || workerState.error,
     workerState,
-    devices,
-    isLoadingDevices,
+    codecCapabilities,
+    isLoadingCapabilities,
     initialize,
-    startRecording,
-    stopRecording,
-    processMedia,
-    getDevices,
+    processVideoFrame,
+    processAudioData,
+    encodeVideo,
+    encodeAudio,
+    decodeVideo,
+    decodeAudio,
+    configureCodec,
+    getCodecCapabilities,
     subscribe,
     terminate,
   };

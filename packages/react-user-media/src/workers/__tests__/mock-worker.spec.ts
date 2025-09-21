@@ -22,13 +22,11 @@ describe('MockMediaWorkerController', () => {
     const state = controller.getState();
     
     expect(state.isInitialized).toBe(false);
-    expect(state.isRecording).toBe(false);
     expect(state.isProcessing).toBe(false);
     expect(state.error).toBe(null);
-    expect(state.recordingStartTime).toBe(null);
-    expect(state.recordingEndTime).toBe(null);
-    expect(state.segments).toEqual([]);
-    expect(state.mimeType).toBe(null);
+    expect(state.videoConfig).toBe(null);
+    expect(state.audioConfig).toBe(null);
+    expect(state.codecCapabilities).toEqual([]);
   });
 
   it('should initialize asynchronously', async () => {
@@ -43,63 +41,94 @@ describe('MockMediaWorkerController', () => {
     expect(controller.getState().isInitialized).toBe(true);
   });
 
-  it('should start recording', async () => {
+  it('should process video frame', async () => {
     await controller.initialize();
     
-    const config = { mimeType: 'video/webm', timeslice: 1000 };
-    await controller.startRecording(config);
+    // Create a mock VideoFrame
+    const canvas = new OffscreenCanvas(1920, 1080);
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = 'red';
+    ctx.fillRect(0, 0, 1920, 1080);
+    const frame = new VideoFrame(canvas, { timestamp: performance.now() });
     
-    const state = controller.getState();
-    expect(state.isRecording).toBe(true);
-    expect(state.mimeType).toBe('video/webm');
-    expect(state.recordingStartTime).toBe(1000); // Mock performance.now value
-  });
-
-  it('should stop recording and return segments', async () => {
-    await controller.initialize();
-    await controller.startRecording();
-    
-    const segments = await controller.stopRecording();
-    
-    expect(segments).toHaveLength(1);
-    expect(segments[0]).toBeInstanceOf(Blob);
-    expect(segments[0].type).toBe('video/webm');
-    
-    const state = controller.getState();
-    expect(state.isRecording).toBe(false);
-    expect(state.recordingEndTime).toBe(1000);
-  });
-
-  it('should process media', async () => {
-    await controller.initialize();
-    
-    const inputBlob = new Blob(['test input'], { type: 'video/webm' });
-    const processedBlob = await controller.processMedia(inputBlob, {
-      operation: 'compress',
-      options: { quality: 0.8 },
+    const result = await controller.processVideoFrame(frame, {
+      operation: 'resize',
+      options: { width: 640, height: 480, format: 'RGBA' },
     });
     
-    expect(processedBlob).toBeInstanceOf(Blob);
-    expect(processedBlob.type).toBe('video/webm');
+    expect(result.data).toBeInstanceOf(ArrayBuffer);
+    expect(result.width).toBe(640);
+    expect(result.height).toBe(480);
+    expect(result.format).toBe('RGBA');
+    expect(result.timestamp).toBeGreaterThan(0);
+    
+    frame.close();
   });
 
-  it('should get devices', async () => {
+  it('should process audio data', async () => {
     await controller.initialize();
     
-    const devices = await controller.getDevices();
-    
-    expect(devices).toHaveLength(2);
-    expect(devices[0]).toEqual({
-      deviceId: 'mock-camera-1',
-      kind: 'videoinput',
-      label: 'Mock Camera 1',
-      groupId: 'mock-group-1',
+    // Create mock AudioData
+    const audioData = new AudioData({
+      format: 'f32',
+      sampleRate: 48000,
+      numberOfChannels: 2,
+      numberOfFrames: 1024,
+      timestamp: performance.now(),
+      data: new Float32Array(2048),
     });
-    expect(devices[1]).toEqual({
-      deviceId: 'mock-microphone-1',
-      kind: 'audioinput',
-      label: 'Mock Microphone 1',
-      groupId: 'mock-group-1',
+    
+    const result = await controller.processAudioData(audioData, {
+      operation: 'resample',
+      options: { sampleRate: 44100, channels: 1 },
+    });
+    
+    expect(result.data).toBeInstanceOf(ArrayBuffer);
+    expect(result.sampleRate).toBe(44100);
+    expect(result.channels).toBe(1);
+    expect(result.format).toBe('f32');
+    expect(result.duration).toBeGreaterThan(0);
+  });
+
+  it('should encode video frames', async () => {
+    await controller.initialize();
+    
+    // Create mock VideoFrames
+    const canvas = new OffscreenCanvas(1920, 1080);
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = 'blue';
+    ctx.fillRect(0, 0, 1920, 1080);
+    const frame = new VideoFrame(canvas, { timestamp: performance.now() });
+    
+    const chunks = await controller.encodeVideo([frame], {
+      codec: 'vp8',
+      width: 1920,
+      height: 1080,
+      bitrate: 1000000,
+      frameRate: 30,
+    });
+    
+    expect(chunks).toHaveLength(1);
+    expect(chunks[0]).toBeInstanceOf(EncodedVideoChunk);
+    expect(chunks[0].type).toBe('key');
+    
+    frame.close();
+  });
+
+  it('should get codec capabilities', async () => {
+    await controller.initialize();
+    
+    const capabilities = await controller.getCodecCapabilities();
+    
+    expect(capabilities).toHaveLength(6);
+    expect(capabilities[0]).toEqual({
+      supported: true,
+      codec: 'avc1.42E01E',
+      hardwareAccelerated: true,
+      maxWidth: 4096,
+      maxHeight: 4096,
+      maxFrameRate: 60,
+      maxBitrate: 100000000,
     });
   });
 
@@ -124,31 +153,34 @@ describe('MockMediaWorkerController', () => {
     
     const state = controller.getState();
     expect(state.isInitialized).toBe(false);
-    expect(state.isRecording).toBe(false);
     expect(state.isProcessing).toBe(false);
     expect(state.error).toBe(null);
-    expect(state.recordingStartTime).toBe(null);
-    expect(state.recordingEndTime).toBe(null);
-    expect(state.segments).toEqual([]);
-    expect(state.mimeType).toBe(null);
+    expect(state.videoConfig).toBe(null);
+    expect(state.audioConfig).toBe(null);
+    expect(state.codecCapabilities).toEqual([]);
   });
 
   it('should throw error when not initialized', async () => {
-    await expect(controller.startRecording()).rejects.toThrow('Worker not initialized');
-    await expect(controller.processMedia(new Blob(), { operation: 'compress' })).rejects.toThrow('Worker not initialized');
-    await expect(controller.getDevices()).rejects.toThrow('Worker not initialized');
-  });
-
-  it('should throw error when already recording', async () => {
-    await controller.initialize();
-    await controller.startRecording();
+    // Create a proper canvas with content
+    const canvas = new OffscreenCanvas(100, 100);
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = 'red';
+    ctx.fillRect(0, 0, 100, 100);
     
-    await expect(controller.startRecording()).rejects.toThrow('Already recording');
-  });
-
-  it('should throw error when not recording', async () => {
-    await controller.initialize();
+    const frame = new VideoFrame(canvas, { timestamp: performance.now() });
+    const audioData = new AudioData({
+      format: 'f32',
+      sampleRate: 48000,
+      numberOfChannels: 2,
+      numberOfFrames: 1024,
+      timestamp: performance.now(),
+      data: new Float32Array(2048),
+    });
     
-    await expect(controller.stopRecording()).rejects.toThrow('Not currently recording');
+    await expect(controller.processVideoFrame(frame, { operation: 'resize' })).rejects.toThrow('Worker not initialized');
+    await expect(controller.processAudioData(audioData, { operation: 'resample' })).rejects.toThrow('Worker not initialized');
+    await expect(controller.getCodecCapabilities()).rejects.toThrow('Worker not initialized');
+    
+    frame.close();
   });
 });
