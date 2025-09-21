@@ -1,5 +1,6 @@
 export * from "./components";
 export * from "./hooks";
+export * from "./workers";
 
 export function getSupportedConstraints() {
 	return navigator.mediaDevices.getSupportedConstraints();

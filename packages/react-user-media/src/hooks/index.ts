@@ -3,3 +3,6 @@ export * from "./use-media-devices";
 export * from "./use-media-devices-ext";
 export * from "./use-media-ext";
 export * from "./use-media-recorder";
+
+// Worker-based hooks
+export * from "../workers";
