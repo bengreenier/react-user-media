@@ -220,6 +220,7 @@ export function useMedia<
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const mediaRef = useRef<MediaStream | undefined>(undefined);
   const requestGeneration = useRef(0);
+  const typeRef = useRef(type);
 
   const isError = useMemo(() => error !== null, [error]);
   const isReady = useMemo(() => typeof media !== "undefined", [media]);
@@ -232,6 +233,23 @@ export function useMedia<
     setError(null);
     setIsLoading(false);
   }, []);
+
+  useEffect(
+    function resetWhenTypeChanges() {
+      if (typeRef.current === type) {
+        return;
+      }
+
+      typeRef.current = type;
+      requestGeneration.current += 1;
+      closeMedia(mediaRef.current);
+      mediaRef.current = undefined;
+      setMedia(undefined);
+      setError(null);
+      setIsLoading(false);
+    },
+    [type],
+  );
 
   const request = useCallback(
     function requestUserMedia(
@@ -268,67 +286,52 @@ export function useMedia<
       setMedia(undefined);
       setError(null);
 
-      switch (type) {
-        case "user":
-          navigator.mediaDevices
-            .getUserMedia(...args)
-            .then(
-              function onRequestSuccess(userMedia) {
-                if (requestGeneration.current !== currentRequestGeneration) {
-                  closeMedia(userMedia);
-                  return;
-                }
+      function onRequestSuccess(userMedia: MediaStream) {
+        if (requestGeneration.current !== currentRequestGeneration) {
+          closeMedia(userMedia);
+          return;
+        }
 
-                mediaRef.current = userMedia;
-                setMedia(userMedia);
-                setError(null);
-              },
-              function onRequestError(error) {
-                if (requestGeneration.current !== currentRequestGeneration) {
-                  return;
-                }
+        mediaRef.current = userMedia;
+        setMedia(userMedia);
+        setError(null);
+      }
 
-                setError(toError(error));
-                setMedia(undefined);
-              },
-            )
-            .then(function finalizeRequest() {
-              if (requestGeneration.current === currentRequestGeneration) {
-                setIsLoading(false);
-              }
-            });
-          break;
-        case "display":
-          navigator.mediaDevices
-            .getDisplayMedia(...args)
-            .then(
-              function onRequestSuccess(userMedia) {
-                if (requestGeneration.current !== currentRequestGeneration) {
-                  closeMedia(userMedia);
-                  return;
-                }
+      function onRequestError(error: unknown) {
+        if (requestGeneration.current !== currentRequestGeneration) {
+          return;
+        }
 
-                mediaRef.current = userMedia;
-                setMedia(userMedia);
-                setError(null);
-              },
-              function onRequestError(error) {
-                if (requestGeneration.current !== currentRequestGeneration) {
-                  return;
-                }
+        setError(toError(error));
+        setMedia(undefined);
+      }
 
-                setError(toError(error));
-                setMedia(undefined);
-              },
-            )
-            .then(function finalizeRequest() {
-              if (requestGeneration.current === currentRequestGeneration) {
-                setIsLoading(false);
-              }
-            });
-          break;
-        default:
-          (type) satisfies never;
+      function finalizeRequest() {
+        if (requestGeneration.current === currentRequestGeneration) {
+          setIsLoading(false);
+        }
+      }
+
+      try {
+        switch (type) {
+          case "user":
+            navigator.mediaDevices
+              .getUserMedia(...args)
+              .then(onRequestSuccess, onRequestError)
+              .then(finalizeRequest);
+            break;
+          case "display":
+            navigator.mediaDevices
+              .getDisplayMedia(...args)
+              .then(onRequestSuccess, onRequestError)
+              .then(finalizeRequest);
+            break;
+          default:
+            (type) satisfies never;
+        }
+      } catch (error) {
+        onRequestError(error);
+        finalizeRequest();
       }
     },
     [type],

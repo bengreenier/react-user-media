@@ -73,7 +73,7 @@ function useMediaTracksByKind(
  * @returns an array of {@link MediaStreamTrack}s.
  */
 export function useMediaTracks(media: MediaStream | undefined) {
-  const trackCache = useRef<MediaStreamTrack[]>([]);
+  const trackCache = useRef<MediaStreamTrack[]>(EMPTY_TRACKS);
 
   return useSyncExternalStore(
     useCallback(

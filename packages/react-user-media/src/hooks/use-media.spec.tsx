@@ -259,3 +259,96 @@ test("requests display media", async () => {
     });
   }
 });
+
+test("surfaces synchronous getUserMedia failures", async () => {
+  vi.spyOn(navigator.mediaDevices, "getUserMedia").mockImplementation(() => {
+    throw new Error("sync getUserMedia failure");
+  });
+
+  render(<UserMediaTestComponent />);
+
+  expect(() => {
+    act(() => {
+      screen.getByText("Request").click();
+    });
+  }).not.toThrow();
+
+  await waitFor(() => {
+    expect(screen.getByTestId("state")).toHaveTextContent("error");
+    expect(screen.getByTestId("error-message")).toHaveTextContent(
+      "sync getUserMedia failure",
+    );
+  });
+});
+
+test("closes streams that resolve after unmount", async () => {
+  const stream = createFakeMediaStream("late");
+  const deferred = createDeferredMediaStream();
+  vi.spyOn(navigator.mediaDevices, "getUserMedia").mockReturnValueOnce(
+    deferred.promise,
+  );
+
+  const { unmount } = render(<UserMediaTestComponent />);
+
+  act(() => {
+    screen.getByText("Request").click();
+  });
+
+  unmount();
+
+  await act(async () => {
+    deferred.resolve(stream.media);
+    await deferred.promise;
+  });
+
+  expect(stream.track.stop).toHaveBeenCalledTimes(1);
+  expect(stream.track.readyState).toBe("ended");
+});
+
+test("ignores in-flight user media after type changes to display", async () => {
+  const userStream = createFakeMediaStream("user");
+  const deferred = createDeferredMediaStream();
+  vi.spyOn(navigator.mediaDevices, "getUserMedia").mockReturnValueOnce(
+    deferred.promise,
+  );
+
+  function SwitchingTypeComponent({
+    type,
+  }: {
+    type: "user" | "display";
+  }) {
+    const { isReady, isLoading, media, request } = useMedia(type);
+
+    return (
+      <>
+        <button onClick={() => request({ video: true })}>Request</button>
+        <p data-testid="switch-state">
+          {isReady ? "ready" : isLoading ? "loading" : "idle"}
+        </p>
+        <p data-testid="switch-media-id">{media?.id ?? "none"}</p>
+      </>
+    );
+  }
+
+  const { rerender } = render(<SwitchingTypeComponent type="user" />);
+
+  act(() => {
+    screen.getByText("Request").click();
+  });
+
+  expect(screen.getByTestId("switch-state")).toHaveTextContent("loading");
+
+  rerender(<SwitchingTypeComponent type="display" />);
+
+  expect(screen.getByTestId("switch-state")).toHaveTextContent("idle");
+  expect(screen.getByTestId("switch-media-id")).toHaveTextContent("none");
+
+  await act(async () => {
+    deferred.resolve(userStream.media);
+    await deferred.promise;
+  });
+
+  expect(userStream.track.stop).toHaveBeenCalledTimes(1);
+  expect(screen.getByTestId("switch-state")).toHaveTextContent("idle");
+  expect(screen.getByTestId("switch-media-id")).toHaveTextContent("none");
+});

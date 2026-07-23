@@ -255,7 +255,21 @@ export function useMediaRecorder(): RecorderState {
       ...recorderOptions
     } = options ?? {};
 
-    const recorder = new MediaRecorder(media, recorderOptions);
+    let recorder: MediaRecorder;
+
+    try {
+      recorder = new MediaRecorder(media, recorderOptions);
+    } catch (error) {
+      setError(
+        error instanceof Error ? error : new Error(String(error)),
+      );
+      setSegments([]);
+      setEndTime(null);
+      setStartTime(null);
+      setRecorder(null);
+      return;
+    }
+
     const sessionId = sessionIdRef.current;
 
     const onDataAvailable = function onDataAvailable(ev: BlobEvent) {
@@ -288,10 +302,24 @@ export function useMediaRecorder(): RecorderState {
 
     const startTime = performance.now();
 
-    if (timeslice === undefined) {
-      recorder.start();
-    } else {
-      recorder.start(timeslice);
+    try {
+      if (timeslice === undefined) {
+        recorder.start();
+      } else {
+        recorder.start(timeslice);
+      }
+    } catch (error) {
+      cleanupRecorderRef.current?.();
+      cleanupRecorderRef.current = null;
+      recorderRef.current = null;
+      setError(
+        error instanceof Error ? error : new Error(String(error)),
+      );
+      setSegments([]);
+      setEndTime(null);
+      setStartTime(null);
+      setRecorder(null);
+      return;
     }
 
     setStartTime(startTime);
@@ -427,21 +455,28 @@ function useMediaRecorderError(
       const sessionId = sessionIdRef.current;
       let isCurrentSubscription = true;
 
-      setErrorState(null);
-
       if (!recorder) {
         return function teardown() {
           isCurrentSubscription = false;
         };
       }
 
-      const onError = () => {
+      // Clear prior error state only when observing a new recorder.
+      // Failed starts may set an error while `recorder` remains null.
+      setErrorState(null);
+
+      const onError = (event: Event) => {
         if (!isCurrentSubscription || sessionIdRef.current !== sessionId) {
           return;
         }
 
+        const eventError =
+          "error" in event && event.error instanceof Error
+            ? event.error
+            : new Error(`MediaRecorder encountered an unknown error.`);
+
         setErrorState({
-          error: new Error(`MediaRecorder encountered an unknown error.`),
+          error: eventError,
           sessionId,
         });
       };

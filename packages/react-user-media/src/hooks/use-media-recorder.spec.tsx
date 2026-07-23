@@ -7,6 +7,8 @@ const mockStream = new MediaStream();
 
 class MockMediaRecorder extends EventTarget {
   static instances: MockMediaRecorder[] = [];
+  static throwOnConstruct: Error | null = null;
+  static throwOnStart: Error | null = null;
 
   readonly startCalls: unknown[][] = [];
   readonly listenerCounts = new Map<string, number>();
@@ -17,6 +19,10 @@ class MockMediaRecorder extends EventTarget {
 
   constructor(media: MediaStream, options?: MediaRecorderOptions) {
     super();
+
+    if (MockMediaRecorder.throwOnConstruct) {
+      throw MockMediaRecorder.throwOnConstruct;
+    }
 
     this.media = media;
     this.options = options;
@@ -45,6 +51,10 @@ class MockMediaRecorder extends EventTarget {
   }
 
   start(...args: unknown[]) {
+    if (MockMediaRecorder.throwOnStart) {
+      throw MockMediaRecorder.throwOnStart;
+    }
+
     this.startCalls.push(args);
     this.state = "recording";
     this.dispatchEvent(new Event("start"));
@@ -60,12 +70,34 @@ class MockMediaRecorder extends EventTarget {
     this.dispatchEvent(new Event("stop"));
   }
 
+  pause() {
+    if (this.state !== "recording") {
+      return;
+    }
+
+    this.state = "paused";
+    this.dispatchEvent(new Event("pause"));
+  }
+
+  resume() {
+    if (this.state !== "paused") {
+      return;
+    }
+
+    this.state = "recording";
+    this.dispatchEvent(new Event("resume"));
+  }
+
   dispatchData(data: Blob) {
     this.dispatchEvent(new BlobEvent("dataavailable", { data }));
   }
 
-  dispatchRecorderError() {
-    this.dispatchEvent(new Event("error"));
+  dispatchRecorderError(error?: Error) {
+    const event = new Event("error") as Event & { error?: Error };
+    if (error) {
+      event.error = error;
+    }
+    this.dispatchEvent(event);
   }
 }
 
@@ -85,10 +117,18 @@ function RecorderLifecycleTestComponent() {
         Start With Timeslice
       </button>
       <button onClick={() => act(() => recorder.stopRecording())}>Stop</button>
+      <button onClick={() => act(() => recorder.pauseRecording())}>
+        Pause
+      </button>
+      <button onClick={() => act(() => recorder.resumeRecording())}>
+        Resume
+      </button>
       <p data-testid="is-error">{String(recorder.isError)}</p>
       <p data-testid="is-finalized">{String(recorder.isFinalized)}</p>
       <p data-testid="is-recording">{String(recorder.isRecording)}</p>
+      <p data-testid="is-paused">{String(recorder.isPaused)}</p>
       <p data-testid="segments-length">{recorder.segments.length}</p>
+      <p data-testid="error-message">{recorder.error?.message ?? "none"}</p>
     </>
   );
 }
@@ -98,6 +138,8 @@ describe("useMediaRecorder lifecycle", () => {
 
   beforeEach(() => {
     MockMediaRecorder.instances = [];
+    MockMediaRecorder.throwOnConstruct = null;
+    MockMediaRecorder.throwOnStart = null;
     Object.defineProperty(globalThis, "MediaRecorder", {
       configurable: true,
       writable: true,
@@ -270,6 +312,88 @@ describe("useMediaRecorder lifecycle", () => {
       expect(screen.getByTestId("is-finalized")).toHaveTextContent("true"),
     );
     expect(screen.getByTestId("segments-length")).toHaveTextContent("0");
+  });
+
+  test("pause and resume toggle isPaused and isRecording", async () => {
+    render(<RecorderLifecycleTestComponent />);
+
+    await userEvent.click(await screen.findByText("Start"));
+    await waitFor(() =>
+      expect(screen.getByTestId("is-recording")).toHaveTextContent("true"),
+    );
+    expect(screen.getByTestId("is-paused")).toHaveTextContent("false");
+
+    await userEvent.click(await screen.findByText("Pause"));
+    await waitFor(() => {
+      expect(screen.getByTestId("is-paused")).toHaveTextContent("true");
+      expect(screen.getByTestId("is-recording")).toHaveTextContent("false");
+      expect(screen.getByTestId("is-finalized")).toHaveTextContent("false");
+    });
+
+    await userEvent.click(await screen.findByText("Resume"));
+    await waitFor(() => {
+      expect(screen.getByTestId("is-paused")).toHaveTextContent("false");
+      expect(screen.getByTestId("is-recording")).toHaveTextContent("true");
+    });
+  });
+
+  test("surfaces MediaRecorder constructor failures as isError", async () => {
+    MockMediaRecorder.throwOnConstruct = new Error("unsupported mimeType");
+
+    render(<RecorderLifecycleTestComponent />);
+
+    expect(() => {
+      act(() => {
+        screen.getByText("Start").click();
+      });
+    }).not.toThrow();
+
+    await waitFor(() => {
+      expect(screen.getByTestId("is-error")).toHaveTextContent("true");
+      expect(screen.getByTestId("error-message")).toHaveTextContent(
+        "unsupported mimeType",
+      );
+      expect(screen.getByTestId("is-recording")).toHaveTextContent("false");
+    });
+    expect(MockMediaRecorder.instances).toHaveLength(0);
+  });
+
+  test("surfaces recorder.start failures as isError", async () => {
+    MockMediaRecorder.throwOnStart = new Error("start failed");
+
+    render(<RecorderLifecycleTestComponent />);
+
+    expect(() => {
+      act(() => {
+        screen.getByText("Start").click();
+      });
+    }).not.toThrow();
+
+    await waitFor(() => {
+      expect(screen.getByTestId("is-error")).toHaveTextContent("true");
+      expect(screen.getByTestId("error-message")).toHaveTextContent(
+        "start failed",
+      );
+      expect(screen.getByTestId("is-recording")).toHaveTextContent("false");
+    });
+  });
+
+  test("preserves native MediaRecorder error details", async () => {
+    render(<RecorderLifecycleTestComponent />);
+
+    await userEvent.click(await screen.findByText("Start"));
+
+    const nativeError = new DOMException("encoder failed", "EncodingError");
+    act(() => {
+      MockMediaRecorder.instances[0]?.dispatchRecorderError(nativeError);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("is-error")).toHaveTextContent("true");
+      expect(screen.getByTestId("error-message")).toHaveTextContent(
+        "encoder failed",
+      );
+    });
   });
 });
 
