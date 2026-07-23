@@ -31,3 +31,5 @@ coverage
 docs_out
 
 *.tsbuildinfo
+.worktrees
+.superpowers
