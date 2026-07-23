@@ -36,7 +36,7 @@ Choose the browser primitive that matches the workload:
 | --- | --- |
 | Live microphone meters, lightweight effects, or VAD-lite | `audio-worklet` (`useMediaAudioProcessor`) |
 | Offline, heavy, or buffer-oriented jobs | `audio-worker` (`useAudioWorker` + Comlink) |
-| Live DSP with an RPC-shaped control plane | `audio-worklet-rpc` (planned) |
+| Live DSP with an RPC-shaped control plane | `audio-worklet-rpc` (`useMediaAudioWorkletRpc` via `@bengreenier/react-user-media/audio-worklet-rpc`) |
 
 ### Worklet (realtime)
 
@@ -93,6 +93,13 @@ instead. `useAudioWorker` never acquires capture or stops tracks.
 The worker surface uses `configure` / process / `subscribe` / `dispose` so a
 future WebCodecs / `VideoFrame` job API can share the same lifecycle without
 replacing these audio APIs.
+
+### Worklet RPC
+
+Import `useMediaAudioWorkletRpc` from
+`@bengreenier/react-user-media/audio-worklet-rpc` (not the package root) so
+default importers do not pull Comlink. Realtime DSP stays in synchronous
+`process()`; configure/subscribe use Comlink on the worklet `MessagePort`.
 
 ## Components
 

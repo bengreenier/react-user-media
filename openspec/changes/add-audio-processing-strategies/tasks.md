@@ -24,14 +24,14 @@
 
 ## 4. Phase 3 — Worklet + Comlink RPC
 
-- [ ] 4.1 Expose Comlink control API on `AudioWorkletNode.port` without awaits inside `process`
-- [ ] 4.2 Wire `strategy: "worklet-rpc"` (or dedicated export) reusing worklet DSP + shared lifecycle
-- [ ] 4.3 Ensure worklet-only path can avoid loading Comlink when packaged as separate entry
-- [ ] 4.4 Tests: configure/subscribe via proxy; process stays sync; cleanup releases proxy+graph; tracks not stopped
-- [ ] 4.5 Optional examples demo for worklet-rpc configure/subscribe
+- [x] 4.1 Expose Comlink control API on `AudioWorkletNode.port` without awaits inside `process`
+- [x] 4.2 Wire `strategy: "worklet-rpc"` (or dedicated export) reusing worklet DSP + shared lifecycle
+- [x] 4.3 Ensure worklet-only path can avoid loading Comlink when packaged as separate entry
+- [x] 4.4 Tests: configure/subscribe via proxy; process stays sync; cleanup releases proxy+graph; tracks not stopped
+- [x] 4.5 Optional examples demo for worklet-rpc configure/subscribe
 
 ## 5. Verification
 
-- [ ] 5.1 Run package tests and lint; fix regressions
-- [ ] 5.2 Validate change with `openspec validate add-audio-processing-strategies`
-- [ ] 5.3 Remove superseded change `add-audio-worker-comlink` from `openspec/changes/` if still present
+- [x] 5.1 Run package tests and lint; fix regressions
+- [x] 5.2 Validate change with `openspec validate add-audio-processing-strategies`
+- [x] 5.3 Remove superseded change `add-audio-worker-comlink` from `openspec/changes/` if still present

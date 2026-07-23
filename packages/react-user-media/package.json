@@ -17,6 +17,11 @@
       "types": "./dist/types/audio/audio-worker.d.ts",
       "import": "./dist/audio/audio-worker.js"
     },
+    "./audio-worklet-rpc": {
+      "types": "./dist/types/audio/worklet-rpc/index.d.ts",
+      "import": "./dist/audio/worklet-rpc/index.js",
+      "require": "./dist/audio/worklet-rpc/index.cjs"
+    },
     "./package.json": "./package.json"
   },
   "publishConfig": {
@@ -37,7 +42,7 @@
     }
   ],
   "scripts": {
-    "build": "tsc -p ./tsconfig.types.json --emitDeclarationOnly && tsup --tsconfig ./tsconfig.lib.json --format cjs,esm src/index.ts src/audio-worklet/index.ts src/audio-worklet/level-meter.ts src/audio/audio-worker.ts src/audio/worker/audio-worker.ts",
+    "build": "tsc -p ./tsconfig.types.json --emitDeclarationOnly && tsup --tsconfig ./tsconfig.lib.json --format cjs,esm --splitting false src/index.ts src/audio-worklet/index.ts src/audio-worklet/level-meter.ts src/audio/audio-worker.ts src/audio/worker/audio-worker.ts src/audio/worklet-rpc/index.ts src/audio/worklet-rpc/processor.ts",
     "doc": "typedoc --plugin typedoc-github-theme --tsconfig ./tsconfig.lib.json --readme ./README.md --basePath ./src --out ./docs_out --entryPoints ./src/index.ts",
     "test": "vitest run --coverage",
     "test-visible": "vitest run --coverage --browser.headless false",
