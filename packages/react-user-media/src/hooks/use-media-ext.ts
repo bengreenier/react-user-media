@@ -1,4 +1,4 @@
-import { useSyncExternalStore, useCallback, useRef } from "react";
+import { useCallback, useRef, useSyncExternalStore } from "react";
 
 const EMPTY_TRACKS = Object.freeze([]) as unknown as MediaStreamTrack[];
 

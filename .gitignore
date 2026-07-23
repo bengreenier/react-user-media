@@ -29,4 +29,4 @@ coverage
 
 # docs
 
-docs_out
+docs_out*.tsbuildinfo

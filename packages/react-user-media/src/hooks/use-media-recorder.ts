@@ -1,11 +1,11 @@
 import {
-  useState,
   useCallback,
-  useSyncExternalStore,
   useEffect,
   useRef,
+  useState,
+  useSyncExternalStore,
 } from "react";
-import { ShallowShapeOf } from "../types";
+import type { ShallowShapeOf } from "../types";
 
 /**
  * Options for configuring the recorder. Extends {@link MediaRecorderOptions}.
@@ -227,106 +227,102 @@ export function useMediaRecorder(): RecorderState {
   const isFinalized =
     !isError && recorderState === "inactive" && endTime !== null;
 
-  const cleanupCurrentRecorder = useCallback(
-    function cleanupCurrentRecorder() {
-      sessionIdRef.current += 1;
+  const cleanupCurrentRecorder = useCallback(function cleanupCurrentRecorder() {
+    sessionIdRef.current += 1;
 
-      cleanupRecorderRef.current?.();
-      cleanupRecorderRef.current = null;
-      recorderRef.current = null;
-    },
-    [],
-  );
+    cleanupRecorderRef.current?.();
+    cleanupRecorderRef.current = null;
+    recorderRef.current = null;
+  }, []);
 
-  const startRecording = useCallback(function startRecordingMedia(
-    media: MediaStream,
-    options?: RecorderOptions,
-  ) {
-    cleanupCurrentRecorder();
+  const startRecording = useCallback(
+    function startRecordingMedia(
+      media: MediaStream,
+      options?: RecorderOptions,
+    ) {
+      cleanupCurrentRecorder();
 
-    const {
-      timeslice,
-      dataAvailableHandler = (
-        ev: BlobEvent,
-        callback: (value: React.SetStateAction<Blob[]>) => void,
-      ) => {
-        callback((current) => current.concat(ev.data));
-      },
-      ...recorderOptions
-    } = options ?? {};
+      const {
+        timeslice,
+        dataAvailableHandler = (
+          ev: BlobEvent,
+          callback: (value: React.SetStateAction<Blob[]>) => void,
+        ) => {
+          callback((current) => current.concat(ev.data));
+        },
+        ...recorderOptions
+      } = options ?? {};
 
-    let recorder: MediaRecorder;
+      let recorder: MediaRecorder;
 
-    try {
-      recorder = new MediaRecorder(media, recorderOptions);
-    } catch (error) {
-      setError(
-        error instanceof Error ? error : new Error(String(error)),
-      );
-      setSegments([]);
-      setEndTime(null);
-      setStartTime(null);
-      setRecorder(null);
-      return;
-    }
-
-    const sessionId = sessionIdRef.current;
-
-    const onDataAvailable = function onDataAvailable(ev: BlobEvent) {
-      if (sessionIdRef.current !== sessionId) {
+      try {
+        recorder = new MediaRecorder(media, recorderOptions);
+      } catch (error) {
+        setError(error instanceof Error ? error : new Error(String(error)));
+        setSegments([]);
+        setEndTime(null);
+        setStartTime(null);
+        setRecorder(null);
         return;
       }
 
-      dataAvailableHandler(ev, function setSegmentsForSession(value) {
+      const sessionId = sessionIdRef.current;
+
+      const onDataAvailable = function onDataAvailable(ev: BlobEvent) {
         if (sessionIdRef.current !== sessionId) {
           return;
         }
 
-        setSegments(value);
-      });
-    };
+        dataAvailableHandler(ev, function setSegmentsForSession(value) {
+          if (sessionIdRef.current !== sessionId) {
+            return;
+          }
 
-    recorder.addEventListener("dataavailable", onDataAvailable);
+          setSegments(value);
+        });
+      };
 
-    cleanupRecorderRef.current = function cleanupRecorder() {
-      recorder.removeEventListener("dataavailable", onDataAvailable);
+      recorder.addEventListener("dataavailable", onDataAvailable);
 
-      if (recorder.state !== "inactive") {
-        recorder.stop();
-      }
-    };
+      cleanupRecorderRef.current = function cleanupRecorder() {
+        recorder.removeEventListener("dataavailable", onDataAvailable);
 
-    setError(null);
-    setSegments([]);
-    setEndTime(null);
+        if (recorder.state !== "inactive") {
+          recorder.stop();
+        }
+      };
 
-    const startTime = performance.now();
-
-    try {
-      if (timeslice === undefined) {
-        recorder.start();
-      } else {
-        recorder.start(timeslice);
-      }
-    } catch (error) {
-      cleanupRecorderRef.current?.();
-      cleanupRecorderRef.current = null;
-      recorderRef.current = null;
-      setError(
-        error instanceof Error ? error : new Error(String(error)),
-      );
+      setError(null);
       setSegments([]);
       setEndTime(null);
-      setStartTime(null);
-      setRecorder(null);
-      return;
-    }
 
-    setStartTime(startTime);
+      const startTime = performance.now();
 
-    recorderRef.current = recorder;
-    setRecorder(recorder);
-  }, [cleanupCurrentRecorder, setError]);
+      try {
+        if (timeslice === undefined) {
+          recorder.start();
+        } else {
+          recorder.start(timeslice);
+        }
+      } catch (error) {
+        cleanupRecorderRef.current?.();
+        cleanupRecorderRef.current = null;
+        recorderRef.current = null;
+        setError(error instanceof Error ? error : new Error(String(error)));
+        setSegments([]);
+        setEndTime(null);
+        setStartTime(null);
+        setRecorder(null);
+        return;
+      }
+
+      setStartTime(startTime);
+
+      recorderRef.current = recorder;
+      setRecorder(recorder);
+    },
+    [cleanupCurrentRecorder, setError],
+  );
 
   const stopRecording = useCallback(function stopRecordingMedia() {
     const recorder = recorderRef.current;

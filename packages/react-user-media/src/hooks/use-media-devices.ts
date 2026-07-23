@@ -1,5 +1,5 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from "react";
-import { ShallowShapeOf } from "../types";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ShallowShapeOf } from "../types";
 
 function toError(error: unknown) {
   return error instanceof Error ? error : new Error(String(error));
@@ -129,57 +129,54 @@ export function useMediaDevices(
   const isError = useMemo(() => error !== null, [error]);
   const isReady = useMemo(() => typeof devices !== "undefined", [devices]);
 
-  const request = useCallback(
-    function requestMediaDevices() {
-      const currentRequestGeneration = requestGeneration.current + 1;
-      requestGeneration.current = currentRequestGeneration;
+  const request = useCallback(function requestMediaDevices() {
+    const currentRequestGeneration = requestGeneration.current + 1;
+    requestGeneration.current = currentRequestGeneration;
 
-      const mediaDevices = navigator.mediaDevices;
+    const mediaDevices = navigator.mediaDevices;
 
-      if (!mediaDevices?.enumerateDevices) {
-        // see https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/enumerateDevices
-        setIsLoading(false);
-        setDevices(undefined);
-        return setError(
-          new Error(
-            `enumerateDevices is not available. Are you in a secure context?`,
-          ),
-        );
-      }
-
-      setIsLoading(true);
+    if (!mediaDevices?.enumerateDevices) {
+      // see https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/enumerateDevices
+      setIsLoading(false);
       setDevices(undefined);
-      setError(null);
+      return setError(
+        new Error(
+          `enumerateDevices is not available. Are you in a secure context?`,
+        ),
+      );
+    }
 
-      mediaDevices.enumerateDevices().then(
-        function onRequestSuccess(devices) {
-          if (requestGeneration.current !== currentRequestGeneration) {
-            return;
-          }
+    setIsLoading(true);
+    setDevices(undefined);
+    setError(null);
 
-          try {
-            setDevices(devices.filter(filterRef.current));
-            setError(null);
-            setIsLoading(false);
-          } catch (error) {
-            setError(toError(error));
-            setDevices(undefined);
-            setIsLoading(false);
-          }
-        },
-        function onRequestError(error) {
-          if (requestGeneration.current !== currentRequestGeneration) {
-            return;
-          }
+    mediaDevices.enumerateDevices().then(
+      function onRequestSuccess(devices) {
+        if (requestGeneration.current !== currentRequestGeneration) {
+          return;
+        }
 
+        try {
+          setDevices(devices.filter(filterRef.current));
+          setError(null);
+          setIsLoading(false);
+        } catch (error) {
           setError(toError(error));
           setDevices(undefined);
           setIsLoading(false);
-        },
-      );
-    },
-    [],
-  );
+        }
+      },
+      function onRequestError(error) {
+        if (requestGeneration.current !== currentRequestGeneration) {
+          return;
+        }
+
+        setError(toError(error));
+        setDevices(undefined);
+        setIsLoading(false);
+      },
+    );
+  }, []);
 
   useEffect(
     function requestMediaDevicesEvent() {

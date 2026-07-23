@@ -1,9 +1,9 @@
 import {
-  DetailedHTMLProps,
+  type DetailedHTMLProps,
   forwardRef,
-  VideoHTMLAttributes,
   useCallback,
   useRef,
+  type VideoHTMLAttributes,
 } from "react";
 
 type VideoElementProps = DetailedHTMLProps<

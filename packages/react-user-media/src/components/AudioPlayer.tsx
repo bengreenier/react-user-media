@@ -1,9 +1,9 @@
 import {
-  DetailedHTMLProps,
+  type AudioHTMLAttributes,
+  type DetailedHTMLProps,
   forwardRef,
   useCallback,
   useRef,
-  AudioHTMLAttributes,
 } from "react";
 
 type AudioElementProps = DetailedHTMLProps<
