@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom";
 import { userEvent } from "@vitest/browser/context";
-import { render, screen, act } from "@testing-library/react";
+import { render, screen, act, waitFor } from "@testing-library/react";
 import { useMedia, useMediaRecorder, VideoPlayer } from "../";
 
 function UserMediaTestComponent() {
@@ -50,7 +50,12 @@ test("records userMedia video", async () => {
 
   await userEvent.click(await screen.findByText("Start Recording"));
 
-  await new Promise((resolve) => setTimeout(resolve, 200));
+  await waitFor(
+    () => {
+      expect(player.played.length).toBeGreaterThan(0);
+    },
+    { timeout: 5000 },
+  );
 
   await userEvent.click(await screen.findByText("Stop Recording"));
 
@@ -58,6 +63,5 @@ test("records userMedia video", async () => {
     "media-recorded-length",
   );
 
-  expect(player.played.length).toBeGreaterThan(0);
   expect(Number(recordedLengthEl.innerText).valueOf()).toBeGreaterThan(0);
 });
