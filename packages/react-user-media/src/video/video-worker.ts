@@ -5,7 +5,10 @@
  * {@link useVideoWorker}, because module-worker URLs are ESM-only.
  */
 export function createVideoWorker(): Worker {
-  return new Worker(new URL("./worker/video-worker.js", import.meta.url), {
-    type: "module",
-  });
+  return new Worker(
+    new URL(/* @vite-ignore */ "./worker/video-worker.js", import.meta.url),
+    {
+      type: "module",
+    },
+  );
 }

@@ -10,7 +10,20 @@ export type {
   AudioProcessResult,
   MediaAudioProcessorOptions,
 } from "./audio";
-export { createAudioWorker } from "./audio/audio-worker";
+/**
+ * Root-entry worker factory. Paths are relative to `dist/index.js`.
+ * Prefer `@bengreenier/react-user-media/audio-worker` when importing the
+ * dedicated subpath entry.
+ */
+export function createAudioWorker(): Worker {
+  return new Worker(
+    new URL(
+      /* @vite-ignore */ "./audio/worker/audio-worker.js",
+      import.meta.url,
+    ),
+    { type: "module" },
+  );
+}
 export type {
   AudioProcessSubscriber,
   AudioWorkerApi,
@@ -50,7 +63,19 @@ export {
   useVideoWorker,
   type VideoWorkerState,
 } from "./video/use-video-worker";
-export { createVideoWorker } from "./video/video-worker";
+/**
+ * Root-entry worker factory. Paths are relative to `dist/index.js`.
+ * Prefer `@bengreenier/react-user-media/video-worker` for the subpath entry.
+ */
+export function createVideoWorker(): Worker {
+  return new Worker(
+    new URL(
+      /* @vite-ignore */ "./video/worker/video-worker.js",
+      import.meta.url,
+    ),
+    { type: "module" },
+  );
+}
 
 export function getSupportedConstraints() {
   return globalThis.navigator?.mediaDevices?.getSupportedConstraints?.() ?? {};

@@ -5,7 +5,10 @@
  * {@link useAudioWorker}, because module-worker URLs are ESM-only.
  */
 export function createAudioWorker(): Worker {
-  return new Worker(new URL("./worker/audio-worker.js", import.meta.url), {
-    type: "module",
-  });
+  return new Worker(
+    new URL(/* @vite-ignore */ "./worker/audio-worker.js", import.meta.url),
+    {
+      type: "module",
+    },
+  );
 }
