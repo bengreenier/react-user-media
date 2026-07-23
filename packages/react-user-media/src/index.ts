@@ -2,7 +2,7 @@ export * from "./hooks";
 export * from "./components";
 
 export function getSupportedConstraints() {
-  return navigator.mediaDevices.getSupportedConstraints();
+  return navigator.mediaDevices?.getSupportedConstraints?.() ?? {};
 }
 
 export function closeMedia(media: MediaStream) {
