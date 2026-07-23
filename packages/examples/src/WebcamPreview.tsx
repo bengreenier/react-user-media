@@ -5,6 +5,7 @@ import {
   VideoPlayer,
 } from "@bengreenier/react-user-media";
 import { AudioLevelMeter } from "./AudioLevelMeter";
+import { VideoFrameSummary } from "./VideoFrameSummary";
 
 export function WebcamPreview() {
   const { request, isError, error, isLoading, isReady, media } =
@@ -42,6 +43,7 @@ export function WebcamPreview() {
         <>
           <VideoPlayer autoPlay media={media} />
           <AudioLevelMeter media={media} />
+          <VideoFrameSummary media={media} />
           <ul>
             {tracks.map((track) => (
               <li key={track.id}>

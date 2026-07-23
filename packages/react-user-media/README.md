@@ -27,6 +27,8 @@ A collection of hooks and components for easier access to [`getUserMedia`](https
 - `useMediaRecorder()`
 - `useMediaAudioProcessor({ strategy: "worklet" })`
 - `useAudioWorker()` — asynchronous PCM buffer jobs in a Dedicated Worker
+- `useMediaVideoProcessor({ strategy: "track" })`
+- `useVideoWorker()` — asynchronous `VideoFrame` / WebCodecs jobs in a Dedicated Worker
 
 ## Audio processing strategies
 
@@ -90,9 +92,9 @@ function LevelAnalyzer() {
 CommonJS consumers and test runners can pass `createWorker` to `useAudioWorker`
 instead. `useAudioWorker` never acquires capture or stops tracks.
 
-The worker surface uses `configure` / process / `subscribe` / `dispose` so a
-future WebCodecs / `VideoFrame` job API can share the same lifecycle without
-replacing these audio APIs.
+The worker surface uses `configure` / process / `subscribe` / `dispose`. A
+parallel video worker API shares the same lifecycle for `VideoFrame` /
+WebCodecs jobs without replacing these audio APIs.
 
 ### Worklet RPC
 
@@ -100,6 +102,44 @@ Import `useMediaAudioWorkletRpc` from
 `@bengreenier/react-user-media/audio-worklet-rpc` (not the package root) so
 default importers do not pull Comlink. Realtime DSP stays in synchronous
 `process()`; configure/subscribe use Comlink on the worklet `MessagePort`.
+
+## Video processing strategies
+
+Video mirrors the audio family with video-appropriate primitives. Audio and
+video strategy APIs remain separate and namespaced.
+
+| Need | Strategy |
+| --- | --- |
+| Live track meters / frame taps | `video-track-processor` (`useMediaVideoProcessor`) |
+| Offline / heavy / WebCodecs buffer jobs | `video-worker` (`useVideoWorker` + Comlink) |
+| Live path + typed configure/subscribe | `video-track-rpc` (`useMediaVideoTrackRpc` via `@bengreenier/react-user-media/video-track-rpc`) |
+
+### Track processor (realtime)
+
+`useMediaVideoProcessor({ strategy: "track" })` consumes a caller-owned
+`MediaStream` video track via `MediaStreamTrackProcessor`, posts throttled
+frame summaries, closes frames it does not keep, and never stops tracks on
+stop/unmount. Pass `createPipeline` for tests when the browser API is missing.
+
+`@bengreenier/react-user-media/video-track-processor` exports helpers such as
+`createSummaryTrackPipeline` and `isMediaStreamTrackProcessorSupported`.
+
+### Worker (async jobs)
+
+Use `useVideoWorker()` for asynchronous `VideoFrame` / optional WebCodecs
+encode jobs. Transfer frames with `Comlink.transfer({ frame }, [frame])`.
+`@bengreenier/react-user-media/video-worker` provides `createVideoWorker()`.
+CommonJS consumers and tests can pass `createWorker`. An optional
+`createVideoStreamWorkerBridge` can feed live frames into a ready worker; it
+does not stop tracks—prefer the track-processor strategy for continuous
+realtime work.
+
+### Track RPC
+
+Import `useMediaVideoTrackRpc` from
+`@bengreenier/react-user-media/video-track-rpc` (not the package root) so
+default importers do not pull Comlink. Per-frame handling stays free of
+Comlink awaits; configure/subscribe use Comlink on a session `MessagePort`.
 
 ## Components
 

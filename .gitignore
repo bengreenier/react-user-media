@@ -33,3 +33,4 @@ docs_out
 *.tsbuildinfo
 .worktrees
 .superpowers
+.pnpm-store/

@@ -23,6 +23,34 @@ export {
 export * from "./close-media";
 export * from "./components";
 export * from "./hooks";
+export type {
+  CreateVideoTrackPipeline,
+  MediaVideoProcessorOptions,
+  VideoJobFrame,
+  VideoProcessingStrategy,
+  VideoProcessOptions,
+  VideoProcessorErrorState,
+  VideoProcessorIdleState,
+  VideoProcessorLoadingState,
+  VideoProcessorReadyState,
+  VideoProcessorState,
+  VideoProcessResult,
+  VideoTrackPipeline,
+} from "./video";
+export {
+  createVideoStreamWorkerBridge,
+  type VideoStreamWorkerBridge,
+} from "./video/stream-bridge";
+export type {
+  VideoProcessSubscriber,
+  VideoWorkerApi,
+} from "./video/types";
+export {
+  type UseVideoWorkerOptions,
+  useVideoWorker,
+  type VideoWorkerState,
+} from "./video/use-video-worker";
+export { createVideoWorker } from "./video/video-worker";
 
 export function getSupportedConstraints() {
   return globalThis.navigator?.mediaDevices?.getSupportedConstraints?.() ?? {};
