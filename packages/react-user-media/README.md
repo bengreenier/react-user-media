@@ -25,6 +25,32 @@ A collection of hooks and components for easier access to [`getUserMedia`](https
   - `useMediaVideoDevices()`
 
 - `useMediaRecorder()`
+- `useMediaAudioProcessor({ strategy: "worklet" })`
+
+## Audio processing strategies
+
+Choose the browser primitive that matches the workload:
+
+| Need | Strategy |
+| --- | --- |
+| Live microphone meters, lightweight effects, or VAD-lite | `audio-worklet` |
+| Offline, heavy, or buffer-oriented jobs | `audio-worker` (planned) |
+| Live DSP with an RPC-shaped control plane | `audio-worklet-rpc` (planned) |
+
+The worklet hook receives a caller-owned `MediaStream`; it creates a
+`MediaStreamAudioSourceNode` → `AudioWorkletNode` → silent gain graph and
+never stops the stream's tracks when stopped or unmounted.
+
+`@bengreenier/react-user-media/audio-worklet` provides
+`getLevelMeterWorkletModuleUrl()` and `addLevelMeterWorklet()` for ESM
+consumers. Pass `workletModuleUrl` to `useMediaAudioProcessor` when testing or
+when a bundler needs an explicit URL. The default module-relative URL is not
+guaranteed under CJS `require`.
+
+The worker surface deliberately uses `configure` / process / `subscribe` /
+`dispose` lifecycle conventions and a `createWorker` override so a future
+worker + Comlink implementation can accept transferable `VideoFrame` and
+WebCodecs jobs without replacing the audio APIs.
 
 ## Components
 
