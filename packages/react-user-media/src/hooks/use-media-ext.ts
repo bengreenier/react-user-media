@@ -1,6 +1,6 @@
 import { useSyncExternalStore, useCallback, useRef } from "react";
 
-const EMPTY_TRACKS = Object.freeze([]) as MediaStreamTrack[];
+const EMPTY_TRACKS = Object.freeze([]) as unknown as MediaStreamTrack[];
 
 function hasSameTrackIds(
   latestTracks: readonly MediaStreamTrack[],
