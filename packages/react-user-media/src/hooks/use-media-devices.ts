@@ -1,5 +1,9 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { ShallowShapeOf } from "../types";
+
+function toError(error: unknown) {
+  return error instanceof Error ? error : new Error(String(error));
+}
 
 /**
  * The base state of {@link useMediaDevices} response.
@@ -118,12 +122,16 @@ export function useMediaDevices(
   );
   const [error, setError] = useState<Error | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const requestGeneration = useRef(0);
 
   const isError = useMemo(() => error !== null, [error]);
   const isReady = useMemo(() => typeof devices !== "undefined", [devices]);
 
   const request = useCallback(
     function requestMediaDevices() {
+      const currentRequestGeneration = requestGeneration.current + 1;
+      requestGeneration.current = currentRequestGeneration;
+
       const mediaDevices = navigator.mediaDevices;
 
       if (!mediaDevices?.enumerateDevices) {
@@ -143,12 +151,26 @@ export function useMediaDevices(
 
       mediaDevices.enumerateDevices().then(
         function onRequestSuccess(devices) {
-          setDevices(devices.filter(filter));
-          setError(null);
-          setIsLoading(false);
+          if (requestGeneration.current !== currentRequestGeneration) {
+            return;
+          }
+
+          try {
+            setDevices(devices.filter(filter));
+            setError(null);
+            setIsLoading(false);
+          } catch (error) {
+            setError(toError(error));
+            setDevices(undefined);
+            setIsLoading(false);
+          }
         },
         function onRequestError(error) {
-          setError(error);
+          if (requestGeneration.current !== currentRequestGeneration) {
+            return;
+          }
+
+          setError(toError(error));
           setDevices(undefined);
           setIsLoading(false);
         },
@@ -177,6 +199,12 @@ export function useMediaDevices(
     },
     [deviceChangedEvent, request],
   );
+
+  useEffect(function invalidateRequestsOnUnmount() {
+    return function teardown() {
+      requestGeneration.current += 1;
+    };
+  }, []);
 
   const state = {
     isError,

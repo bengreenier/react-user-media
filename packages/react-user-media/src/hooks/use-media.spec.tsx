@@ -259,3 +259,48 @@ test("requests display media", async () => {
     });
   }
 });
+
+test("surfaces synchronous getUserMedia failures", async () => {
+  vi.spyOn(navigator.mediaDevices, "getUserMedia").mockImplementation(() => {
+    throw new Error("sync getUserMedia failure");
+  });
+
+  render(<UserMediaTestComponent />);
+
+  expect(() => {
+    act(() => {
+      screen.getByText("Request").click();
+    });
+  }).not.toThrow();
+
+  await waitFor(() => {
+    expect(screen.getByTestId("state")).toHaveTextContent("error");
+    expect(screen.getByTestId("error-message")).toHaveTextContent(
+      "sync getUserMedia failure",
+    );
+  });
+});
+
+test("closes streams that resolve after unmount", async () => {
+  const stream = createFakeMediaStream("late");
+  const deferred = createDeferredMediaStream();
+  vi.spyOn(navigator.mediaDevices, "getUserMedia").mockReturnValueOnce(
+    deferred.promise,
+  );
+
+  const { unmount } = render(<UserMediaTestComponent />);
+
+  act(() => {
+    screen.getByText("Request").click();
+  });
+
+  unmount();
+
+  await act(async () => {
+    deferred.resolve(stream.media);
+    await deferred.promise;
+  });
+
+  expect(stream.track.stop).toHaveBeenCalledTimes(1);
+  expect(stream.track.readyState).toBe("ended");
+});

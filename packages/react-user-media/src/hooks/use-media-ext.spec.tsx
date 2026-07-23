@@ -149,3 +149,35 @@ test("keeps video track references stable when only audio tracks change", async 
 
   expect(result.current).toBe(videoTracks);
 });
+
+test("returns a frozen empty array for an empty MediaStream", () => {
+  const media = new MediaStream();
+  const { result } = renderHook(() => useMediaTracks(media));
+
+  expect(result.current).toEqual([]);
+  expect(Object.isFrozen(result.current)).toBe(true);
+});
+
+test("ignores track events from a previous media stream after rerender", async () => {
+  const firstTrack = await createTrack("audio");
+  const secondTrack = await createTrack("audio");
+  const firstMedia = new MediaStream([firstTrack]);
+  const secondMedia = new MediaStream([secondTrack]);
+  const { result, rerender } = renderHook(
+    ({ currentMedia }: { currentMedia: MediaStream }) =>
+      useMediaTracks(currentMedia),
+    { initialProps: { currentMedia: firstMedia } },
+  );
+
+  expect(result.current).toEqual([firstTrack]);
+
+  rerender({ currentMedia: secondMedia });
+  expect(result.current).toEqual([secondTrack]);
+
+  act(() => {
+    firstMedia.removeTrack(firstTrack);
+    dispatchTrackEvent(firstMedia, "removetrack");
+  });
+
+  expect(result.current).toEqual([secondTrack]);
+});

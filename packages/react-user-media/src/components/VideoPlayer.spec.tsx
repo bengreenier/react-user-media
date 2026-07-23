@@ -69,3 +69,16 @@ test("clears srcObject on previous element when DOM element is replaced", () => 
   expect(previousElement.srcObject).toBeNull();
   expect(nextElement.srcObject).toBe(stream);
 });
+
+test("updates srcObject when the media prop changes", () => {
+  const first = new MediaStream();
+  const second = new MediaStream();
+  const { container, rerender } = render(<VideoPlayer media={first} />);
+  const element = container.querySelector("video")!;
+
+  expect(element.srcObject).toBe(first);
+
+  rerender(<VideoPlayer media={second} />);
+
+  expect(element.srcObject).toBe(second);
+});

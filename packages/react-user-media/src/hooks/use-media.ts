@@ -268,67 +268,52 @@ export function useMedia<
       setMedia(undefined);
       setError(null);
 
-      switch (type) {
-        case "user":
-          navigator.mediaDevices
-            .getUserMedia(...args)
-            .then(
-              function onRequestSuccess(userMedia) {
-                if (requestGeneration.current !== currentRequestGeneration) {
-                  closeMedia(userMedia);
-                  return;
-                }
+      function onRequestSuccess(userMedia: MediaStream) {
+        if (requestGeneration.current !== currentRequestGeneration) {
+          closeMedia(userMedia);
+          return;
+        }
 
-                mediaRef.current = userMedia;
-                setMedia(userMedia);
-                setError(null);
-              },
-              function onRequestError(error) {
-                if (requestGeneration.current !== currentRequestGeneration) {
-                  return;
-                }
+        mediaRef.current = userMedia;
+        setMedia(userMedia);
+        setError(null);
+      }
 
-                setError(toError(error));
-                setMedia(undefined);
-              },
-            )
-            .then(function finalizeRequest() {
-              if (requestGeneration.current === currentRequestGeneration) {
-                setIsLoading(false);
-              }
-            });
-          break;
-        case "display":
-          navigator.mediaDevices
-            .getDisplayMedia(...args)
-            .then(
-              function onRequestSuccess(userMedia) {
-                if (requestGeneration.current !== currentRequestGeneration) {
-                  closeMedia(userMedia);
-                  return;
-                }
+      function onRequestError(error: unknown) {
+        if (requestGeneration.current !== currentRequestGeneration) {
+          return;
+        }
 
-                mediaRef.current = userMedia;
-                setMedia(userMedia);
-                setError(null);
-              },
-              function onRequestError(error) {
-                if (requestGeneration.current !== currentRequestGeneration) {
-                  return;
-                }
+        setError(toError(error));
+        setMedia(undefined);
+      }
 
-                setError(toError(error));
-                setMedia(undefined);
-              },
-            )
-            .then(function finalizeRequest() {
-              if (requestGeneration.current === currentRequestGeneration) {
-                setIsLoading(false);
-              }
-            });
-          break;
-        default:
-          (type) satisfies never;
+      function finalizeRequest() {
+        if (requestGeneration.current === currentRequestGeneration) {
+          setIsLoading(false);
+        }
+      }
+
+      try {
+        switch (type) {
+          case "user":
+            navigator.mediaDevices
+              .getUserMedia(...args)
+              .then(onRequestSuccess, onRequestError)
+              .then(finalizeRequest);
+            break;
+          case "display":
+            navigator.mediaDevices
+              .getDisplayMedia(...args)
+              .then(onRequestSuccess, onRequestError)
+              .then(finalizeRequest);
+            break;
+          default:
+            (type) satisfies never;
+        }
+      } catch (error) {
+        onRequestError(error);
+        finalizeRequest();
       }
     },
     [type],
