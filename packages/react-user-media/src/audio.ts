@@ -1,13 +1,13 @@
 /**
  * A PCM audio frame for processor strategies that operate on buffered audio.
+ * Planar `channelData` is the transfer-friendly shape for worker jobs.
  * Future worker strategies can add video/WebCodecs frame types alongside this
  * audio-specific contract without changing the lifecycle surface.
  */
 export interface AudioFrame {
-  readonly data: Float32Array;
+  readonly channelData: Float32Array[];
   readonly sampleRate: number;
-  readonly timestamp: number;
-  readonly numberOfChannels: number;
+  readonly timestamp?: number;
 }
 
 /**
@@ -15,6 +15,8 @@ export interface AudioFrame {
  */
 export interface AudioProcessOptions {
   readonly metricIntervalMs?: number;
+  /** Required by the Dedicated Worker configure path. */
+  readonly sampleRate?: number;
 }
 
 /**
@@ -24,11 +26,11 @@ export interface AudioProcessResult {
   readonly rms: number;
   readonly peak: number;
   readonly timestamp: number;
+  readonly frameLength?: number;
 }
 
 /**
- * Available audio processing strategies. Worker and worklet-rpc are reserved
- * for additive future phases; this release implements only `worklet`.
+ * Available audio processing strategies.
  */
 export type AudioProcessingStrategy = "worklet" | "worker" | "worklet-rpc";
 

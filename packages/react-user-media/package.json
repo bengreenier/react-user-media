@@ -14,9 +14,8 @@
       "require": "./dist/audio-worklet/index.cjs"
     },
     "./audio-worker": {
-      "types": "./dist/types/audio-worker/index.d.ts",
-      "import": "./dist/audio-worker/index.js",
-      "require": "./dist/audio-worker/index.cjs"
+      "types": "./dist/types/audio/audio-worker.d.ts",
+      "import": "./dist/audio/audio-worker.js"
     },
     "./package.json": "./package.json"
   },
@@ -38,7 +37,7 @@
     }
   ],
   "scripts": {
-    "build": "tsc -p ./tsconfig.types.json --emitDeclarationOnly && tsup --tsconfig ./tsconfig.lib.json --format cjs,esm src/index.ts src/audio-worklet/index.ts src/audio-worklet/level-meter.ts src/audio-worker/index.ts",
+    "build": "tsc -p ./tsconfig.types.json --emitDeclarationOnly && tsup --tsconfig ./tsconfig.lib.json --format cjs,esm src/index.ts src/audio-worklet/index.ts src/audio-worklet/level-meter.ts src/audio/audio-worker.ts src/audio/worker/audio-worker.ts",
     "doc": "typedoc --plugin typedoc-github-theme --tsconfig ./tsconfig.lib.json --readme ./README.md --basePath ./src --out ./docs_out --entryPoints ./src/index.ts",
     "test": "vitest run --coverage",
     "test-visible": "vitest run --coverage --browser.headless false",
@@ -66,5 +65,8 @@
   "files": [
     "dist",
     "README.md"
-  ]
+  ],
+  "dependencies": {
+    "comlink": "^4.4.2"
+  }
 }
