@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { userEvent } from "@vitest/browser/context";
-import { render, screen, act, waitFor } from "@testing-library/react";
 import {
   useMediaAudioDevices,
   useMediaAudioInputDevices,
@@ -196,7 +196,8 @@ test("surfaces an error when mediaDevices is unavailable", async () => {
         isLoading: false,
         isError: true,
         isReady: false,
-        error: "enumerateDevices is not available. Are you in a secure context?",
+        error:
+          "enumerateDevices is not available. Are you in a secure context?",
         deviceCount: null,
       });
     });

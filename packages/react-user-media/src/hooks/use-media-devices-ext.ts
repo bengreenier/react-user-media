@@ -1,4 +1,7 @@
-import { UseMediaDeviceOptions, useMediaDevices } from "./use-media-devices";
+import {
+  type UseMediaDeviceOptions,
+  useMediaDevices,
+} from "./use-media-devices";
 
 /**
  * Hook that observes {@link https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/enumerateDevices|enumerateDevices}

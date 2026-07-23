@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom";
-import { render, screen, waitFor, cleanup, act } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { vi } from "vitest";
 import { useMedia } from "../";
 
@@ -312,11 +312,7 @@ test("ignores in-flight user media after type changes to display", async () => {
     deferred.promise,
   );
 
-  function SwitchingTypeComponent({
-    type,
-  }: {
-    type: "user" | "display";
-  }) {
+  function SwitchingTypeComponent({ type }: { type: "user" | "display" }) {
     const { isReady, isLoading, media, request } = useMedia(type);
 
     return (

@@ -1,10 +1,12 @@
-import { renderHook, act } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { useMediaAudioTracks, useMediaTracks, useMediaVideoTracks } from "../";
 
 const createdTracks: MediaStreamTrack[] = [];
 
 afterEach(() => {
-  createdTracks.splice(0).forEach((track) => track.stop());
+  for (const track of createdTracks.splice(0)) {
+    track.stop();
+  }
 });
 
 async function createTrack(kind: MediaStreamTrack["kind"]) {

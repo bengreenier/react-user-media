@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom";
-import { renderHook, act, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { useTrackMuteState } from "../";
 
 function createTrack(muted: boolean) {

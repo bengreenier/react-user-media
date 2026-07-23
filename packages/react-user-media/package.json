@@ -32,32 +32,26 @@
     "doc": "typedoc --plugin typedoc-github-theme --tsconfig ./tsconfig.lib.json --readme ./README.md --basePath ./src --out ./docs_out --entryPoints ./src/index.ts",
     "test": "vitest run --coverage",
     "test-visible": "vitest run --coverage --browser.headless false",
-    "lint": "eslint ."
+    "lint": "biome check"
   },
   "peerDependencies": {
-    "react": ">=18"
+    "react": ">=19"
   },
   "devDependencies": {
-    "@eslint/js": "^9.9.0",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.5.0",
     "@testing-library/react": "^16.3.2",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
-    "@vitest/browser": "^2.0.5",
-    "@vitest/coverage-istanbul": "^2.0.5",
-    "eslint": "^9.9.0",
-    "eslint-plugin-react-hooks": "^5.1.0-rc.0",
-    "eslint-plugin-react-refresh": "^0.4.9",
-    "globals": "^15.9.0",
-    "playwright": "^1.46.1",
+    "@vitest/browser": "^3.2.7",
+    "@vitest/coverage-istanbul": "^3.2.7",
+    "playwright": "^1.55.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "typedoc": "^0.26.6",
-    "typedoc-github-theme": "^0.1.2",
-    "typescript": "^5.5.3",
-    "typescript-eslint": "^8.0.1",
-    "vitest": "^2.0.5"
+    "typedoc": "^0.28.20",
+    "typedoc-github-theme": "^0.4.0",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.7"
   },
   "files": [
     "dist",

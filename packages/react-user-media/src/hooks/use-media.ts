@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { closeMedia } from "../close-media";
-import { ShallowShapeOf } from "../types";
+import type { ShallowShapeOf } from "../types";
 
 // base types for MediaStateBase
 
@@ -171,9 +171,9 @@ function toError(error: unknown) {
 
 interface MediaDef<
   Type,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // biome-ignore lint/suspicious/noExplicitAny: request arity varies by media type
   RequestExtensionType extends { request(...args: any[]): any },
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // biome-ignore lint/suspicious/noExplicitAny: state constraint is intentionally open
   StateExtensionType extends MediaStateBase<any>,
 > {
   type: Type;

@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { userEvent } from "@vitest/browser/context";
-import { render, screen, act, cleanup, waitFor } from "@testing-library/react";
 import { useMedia, useMediaRecorder, VideoPlayer } from "../";
 
 const mockStream = new MediaStream();
@@ -269,7 +269,9 @@ describe("useMediaRecorder lifecycle", () => {
 
       return (
         <>
-          <button onClick={() => act(() => recorder.startRecording(mockStream))}>
+          <button
+            onClick={() => act(() => recorder.startRecording(mockStream))}
+          >
             Start
           </button>
           <button

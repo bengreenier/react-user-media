@@ -1,9 +1,9 @@
 import "@testing-library/jest-dom";
+import { act, render, screen } from "@testing-library/react";
 import { userEvent } from "@vitest/browser/context";
-import { render, screen, act } from "@testing-library/react";
-import { VideoPlayer } from "./VideoPlayer";
-import { getHostRefCallback } from "./media-player-test-utils";
 import { useMedia } from "../";
+import { getHostRefCallback } from "./media-player-test-utils";
+import { VideoPlayer } from "./VideoPlayer";
 
 function UserMediaTestComponent() {
   const { isReady, media, request } = useMedia("user");

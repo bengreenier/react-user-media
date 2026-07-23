@@ -1,4 +1,4 @@
 export type ShallowShapeOf<T> = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // biome-ignore lint/suspicious/noExplicitAny: shallow shape intentionally widens values
   [K in keyof T]: any;
 };
