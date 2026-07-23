@@ -1,20 +1,7 @@
 import * as Comlink from "comlink";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createAudioWorker } from "../root-workers";
 import type { AudioProcessOptions, AudioWorkerApi } from "./types";
-
-/**
- * Default factory for the root package bundle (`dist/index.js`), where the
- * worker script lives at `./audio/worker/audio-worker.js`.
- */
-function createDefaultAudioWorker(): Worker {
-  return new Worker(
-    new URL(
-      /* @vite-ignore */ "./audio/worker/audio-worker.js",
-      import.meta.url,
-    ),
-    { type: "module" },
-  );
-}
 
 export type AudioWorkerProxy = Comlink.Remote<AudioWorkerApi>;
 
@@ -139,7 +126,7 @@ export function useAudioWorker(
       let worker: Worker;
       let proxy: AudioWorkerProxy;
       try {
-        worker = (options.createWorker ?? createDefaultAudioWorker)();
+        worker = (options.createWorker ?? createAudioWorker)();
         proxy = Comlink.wrap<AudioWorkerApi>(worker);
       } catch (error) {
         if (sessionIdRef.current === sessionId) {

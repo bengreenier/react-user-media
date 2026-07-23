@@ -1,20 +1,7 @@
 import * as Comlink from "comlink";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createVideoWorker } from "../root-workers";
 import type { VideoProcessOptions, VideoWorkerApi } from "./types";
-
-/**
- * Default factory for the root package bundle (`dist/index.js`), where the
- * worker script lives at `./video/worker/video-worker.js`.
- */
-function createDefaultVideoWorker(): Worker {
-  return new Worker(
-    new URL(
-      /* @vite-ignore */ "./video/worker/video-worker.js",
-      import.meta.url,
-    ),
-    { type: "module" },
-  );
-}
 
 export type VideoWorkerProxy = Comlink.Remote<VideoWorkerApi>;
 
@@ -139,7 +126,7 @@ export function useVideoWorker(
       let worker: Worker;
       let proxy: VideoWorkerProxy;
       try {
-        worker = (options.createWorker ?? createDefaultVideoWorker)();
+        worker = (options.createWorker ?? createVideoWorker)();
         proxy = Comlink.wrap<VideoWorkerApi>(worker);
       } catch (error) {
         if (sessionIdRef.current === sessionId) {

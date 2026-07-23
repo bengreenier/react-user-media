@@ -88,8 +88,10 @@ function LevelAnalyzer() {
 }
 ```
 
-`@bengreenier/react-user-media/audio-worker` provides `createAudioWorker()`.
-CommonJS consumers and test runners can pass `createWorker` to `useAudioWorker`
+`@bengreenier/react-user-media/audio-worker` provides `createAudioWorker()`
+with a URL relative to that subpath entry. The root export of
+`createAudioWorker` resolves the same script from `dist/index.js`. CommonJS
+consumers and test runners can pass `createWorker` to `useAudioWorker`
 instead. `useAudioWorker` never acquires capture or stops tracks.
 
 The worker surface uses `configure` / process / `subscribe` / `dispose`. A
@@ -128,11 +130,12 @@ stop/unmount. Pass `createPipeline` for tests when the browser API is missing.
 
 Use `useVideoWorker()` for asynchronous `VideoFrame` / optional WebCodecs
 encode jobs. Transfer frames with `Comlink.transfer({ frame }, [frame])`.
-`@bengreenier/react-user-media/video-worker` provides `createVideoWorker()`.
-CommonJS consumers and tests can pass `createWorker`. An optional
-`createVideoStreamWorkerBridge` can feed live frames into a ready worker; it
-does not stop tracks—prefer the track-processor strategy for continuous
-realtime work.
+`@bengreenier/react-user-media/video-worker` provides `createVideoWorker()`
+relative to that subpath; the root export resolves the same script from
+`dist/index.js`. CommonJS consumers and tests can pass `createWorker`. An
+optional `createVideoStreamWorkerBridge` can feed live frames into a ready
+worker; it does not stop tracks—prefer the track-processor strategy for
+continuous realtime work.
 
 ### Track RPC
 
