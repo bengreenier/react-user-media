@@ -1,6 +1,5 @@
 import {
   useState,
-  useMemo,
   useCallback,
   useSyncExternalStore,
   useEffect,
@@ -15,15 +14,15 @@ export interface RecorderOptions extends MediaRecorderOptions {
   /**
    * The number of milliseconds to record into each `Blob`.
    *
-   * If this parameter isn't included, the entire media duration is recorded
-   * into a single `Blob` unless the `requestData()` method is called to
-   * obtain the `Blob` and trigger the creation of a new `Blob` into which
-   * the media continues to be recorded.
+   * If this parameter isn't included, the browser default behavior is used:
+   * the entire media duration is recorded into a single `Blob` unless the
+   * `requestData()` method is called to obtain the `Blob` and trigger the
+   * creation of a new `Blob` into which the media continues to be recorded.
    */
   timeslice?: number;
 
   /**
-   * A custom handler for the `datavailable` event.
+   * A custom handler for the `dataavailable` event.
    *
    * Note: This is for advanced use-cases only. You probably don't need to modify the default handler.
    * @param ev - the event
@@ -60,6 +59,11 @@ interface RecorderStateBase {
    * See {@link startTime}.
    */
   isRecording: boolean;
+
+  /**
+   * Indicates that recording is currently paused.
+   */
+  isPaused: boolean;
 
   /**
    * Indicates that {@link segments} are ready for consumption.
@@ -107,6 +111,30 @@ interface RecorderStateBase {
    * Stops recording `media` with this recorder.
    */
   stopRecording(): void;
+
+  /**
+   * Pauses recording `media` with this recorder.
+   */
+  pauseRecording(): void;
+
+  /**
+   * Resumes recording `media` with this recorder.
+   */
+  resumeRecording(): void;
+}
+
+/**
+ * The idle state of the recorder.
+ */
+interface RecorderIdleState extends RecorderStateBase {
+  isError: false;
+  isRecording: false;
+  isPaused: false;
+  isFinalized: false;
+  error: null;
+  startTime: null;
+  endTime: null;
+  segments: [];
 }
 
 /**
@@ -115,11 +143,12 @@ interface RecorderStateBase {
 interface RecorderErrorState extends RecorderStateBase {
   isError: true;
   isRecording: false;
+  isPaused: false;
   isFinalized: false;
   error: Error;
-  startTime: null;
-  endTime: null;
-  segments: [];
+  startTime: DOMHighResTimeStamp | null;
+  endTime: DOMHighResTimeStamp | null;
+  segments: Blob[];
 }
 
 /**
@@ -128,11 +157,26 @@ interface RecorderErrorState extends RecorderStateBase {
 interface RecorderRecordingState extends RecorderStateBase {
   isError: false;
   isRecording: true;
+  isPaused: false;
   isFinalized: false;
   error: null;
   startTime: DOMHighResTimeStamp;
   endTime: null;
-  segments: [];
+  segments: Blob[];
+}
+
+/**
+ * The paused state of the recorder.
+ */
+interface RecorderPausedState extends RecorderStateBase {
+  isError: false;
+  isRecording: false;
+  isPaused: true;
+  isFinalized: false;
+  error: null;
+  startTime: DOMHighResTimeStamp;
+  endTime: null;
+  segments: Blob[];
 }
 
 /**
@@ -141,6 +185,7 @@ interface RecorderRecordingState extends RecorderStateBase {
 interface RecorderFinalizedState extends RecorderStateBase {
   isError: false;
   isRecording: false;
+  isPaused: false;
   isFinalized: true;
   error: null;
   startTime: DOMHighResTimeStamp;
@@ -152,8 +197,10 @@ interface RecorderFinalizedState extends RecorderStateBase {
  * The state of the recorder.
  */
 export type RecorderState =
+  | RecorderIdleState
   | RecorderErrorState
   | RecorderRecordingState
+  | RecorderPausedState
   | RecorderFinalizedState;
 
 /**
@@ -161,85 +208,146 @@ export type RecorderState =
  * @returns See {@link RecorderState} for more information.
  */
 export function useMediaRecorder(): RecorderState {
-  // we need _both_ a referentially stable version of MediaRecorder and a mutable version
-  // so that we can have stable start/stop functions, but also dynamic state updates
   const recorderRef = useRef<MediaRecorder | null>(null);
-  const [isRecorderDirty, setIsRecorderDirty] = useState<boolean>(false);
-  const recorder = useMemo(() => {
-    if (isRecorderDirty) setIsRecorderDirty(false);
-
-    return recorderRef.current ?? undefined;
-  }, [recorderRef, isRecorderDirty]);
+  const cleanupRecorderRef = useRef<(() => void) | null>(null);
+  const sessionIdRef = useRef(0);
+  const [recorder, setRecorder] = useState<MediaRecorder | null>(null);
 
   const recorderState = useMediaRecorderState(recorder);
-  const isRecording = useMemo(
-    () => recorderState === "recording",
-    [recorderState],
-  );
 
-  const error = useMediaRecorderError(recorder);
-  const isError = useMemo(() => error !== null, [error]);
+  const [error, setError] = useMediaRecorderError(recorder, sessionIdRef);
+  const isError = error !== null;
+  const isRecording = !isError && recorderState === "recording";
+  const isPaused = !isError && recorderState === "paused";
 
   const [startTime, setStartTime] = useState<DOMHighResTimeStamp | null>(null);
   const [endTime, setEndTime] = useState<DOMHighResTimeStamp | null>(null);
 
   const [segments, setSegments] = useState<Blob[]>([]);
-  const isFinalized = useMemo(
-    () =>
-      segments.length > 0 && recorderState === "inactive" && endTime !== null,
-    [segments, recorderState, endTime],
+  const isFinalized =
+    !isError && recorderState === "inactive" && endTime !== null;
+
+  const cleanupCurrentRecorder = useCallback(
+    function cleanupCurrentRecorder() {
+      sessionIdRef.current += 1;
+
+      cleanupRecorderRef.current?.();
+      cleanupRecorderRef.current = null;
+      recorderRef.current = null;
+    },
+    [],
   );
 
   const startRecording = useCallback(function startRecordingMedia(
     media: MediaStream,
     options?: RecorderOptions,
   ) {
-    const { timeslice, dataAvailableHandler, ...recorderOptions } = {
-      timeslice: 30 * 1000 /* 30s */,
-      dataAvailableHandler: (
+    cleanupCurrentRecorder();
+
+    const {
+      timeslice,
+      dataAvailableHandler = (
         ev: BlobEvent,
         callback: (value: React.SetStateAction<Blob[]>) => void,
       ) => {
         callback((current) => current.concat(ev.data));
       },
-      ...options,
-    };
+      ...recorderOptions
+    } = options ?? {};
 
     const recorder = new MediaRecorder(media, recorderOptions);
+    const sessionId = sessionIdRef.current;
 
-    recorder.addEventListener("dataavailable", function onDataAvailable(ev) {
-      dataAvailableHandler(ev, setSegments);
-    });
+    const onDataAvailable = function onDataAvailable(ev: BlobEvent) {
+      if (sessionIdRef.current !== sessionId) {
+        return;
+      }
 
+      dataAvailableHandler(ev, function setSegmentsForSession(value) {
+        if (sessionIdRef.current !== sessionId) {
+          return;
+        }
+
+        setSegments(value);
+      });
+    };
+
+    recorder.addEventListener("dataavailable", onDataAvailable);
+
+    cleanupRecorderRef.current = function cleanupRecorder() {
+      recorder.removeEventListener("dataavailable", onDataAvailable);
+
+      if (recorder.state !== "inactive") {
+        recorder.stop();
+      }
+    };
+
+    setError(null);
     setSegments([]);
     setEndTime(null);
 
     const startTime = performance.now();
-    recorder.start(timeslice);
+
+    if (timeslice === undefined) {
+      recorder.start();
+    } else {
+      recorder.start(timeslice);
+    }
 
     setStartTime(startTime);
 
     recorderRef.current = recorder;
-    setIsRecorderDirty(true);
-  }, []);
+    setRecorder(recorder);
+  }, [cleanupCurrentRecorder, setError]);
 
   const stopRecording = useCallback(function stopRecordingMedia() {
+    const recorder = recorderRef.current;
+
+    if (!recorder || recorder.state === "inactive") {
+      return;
+    }
+
+    const sessionId = sessionIdRef.current;
     const endTime = performance.now();
 
-    recorderRef.current?.addEventListener(
+    recorder.addEventListener(
       "stop",
       function onStopCompleted() {
+        if (sessionIdRef.current !== sessionId) {
+          return;
+        }
+
         setEndTime(endTime);
       },
       { once: true },
     );
 
-    recorderRef.current?.stop();
+    recorder.stop();
   }, []);
+
+  const pauseRecording = useCallback(function pauseRecordingMedia() {
+    if (recorderRef.current?.state === "recording") {
+      recorderRef.current.pause();
+    }
+  }, []);
+
+  const resumeRecording = useCallback(function resumeRecordingMedia() {
+    if (recorderRef.current?.state === "paused") {
+      recorderRef.current.resume();
+    }
+  }, []);
+
+  useEffect(
+    function cleanupRecorderOnUnmount() {
+      return cleanupCurrentRecorder;
+    },
+    [cleanupCurrentRecorder],
+  );
 
   const state = {
     isError,
     isRecording,
+    isPaused,
     isFinalized,
     error,
     segments,
@@ -247,10 +355,12 @@ export function useMediaRecorder(): RecorderState {
     endTime,
     startRecording,
     stopRecording,
+    pauseRecording,
+    resumeRecording,
   } satisfies ShallowShapeOf<RecorderState>;
 
   // we cast, as it isn't worth the runtime cost to check that this
-  // lines up with each condition (isError, isLoading, isReady)
+  // lines up with each condition.
   return state as RecorderState;
 }
 
@@ -259,7 +369,7 @@ export function useMediaRecorder(): RecorderState {
  * @param recorder the {@link MediaRecorder} to observe.
  * @returns The `recorder` state.
  */
-function useMediaRecorderState(recorder: MediaRecorder | undefined) {
+function useMediaRecorderState(recorder: MediaRecorder | null) {
   return useSyncExternalStore(
     useCallback(
       function subscribe(callback) {
@@ -279,7 +389,7 @@ function useMediaRecorderState(recorder: MediaRecorder | undefined) {
     ),
     useCallback(
       function getSnapshot() {
-        return recorder?.state ?? "unavailable";
+        return recorder?.state ?? "inactive";
       },
       [recorder],
     ),
@@ -291,24 +401,62 @@ function useMediaRecorderState(recorder: MediaRecorder | undefined) {
  * @param recorder the {@link MediaRecorder} to observe.
  * @returns The `error`, if any.
  */
-function useMediaRecorderError(recorder: MediaRecorder | undefined) {
-  const [error, setError] = useState<Error | null>(null);
+function useMediaRecorderError(
+  recorder: MediaRecorder | null,
+  sessionIdRef: React.MutableRefObject<number>,
+) {
+  const [errorState, setErrorState] = useState<{
+    error: Error;
+    sessionId: number;
+  } | null>(null);
+
+  const setError = useCallback(
+    function setCurrentSessionError(error: Error | null) {
+      if (error === null) {
+        setErrorState(null);
+        return;
+      }
+
+      setErrorState({ error, sessionId: sessionIdRef.current });
+    },
+    [sessionIdRef],
+  );
 
   useEffect(
     function observeRecorderError() {
-      if (recorder) {
-        const onError = () => {
-          setError(new Error(`MediaRecorder encountered an unknown error.`));
-        };
-        recorder.addEventListener("error", onError);
+      const sessionId = sessionIdRef.current;
+      let isCurrentSubscription = true;
 
+      setErrorState(null);
+
+      if (!recorder) {
         return function teardown() {
-          recorder.removeEventListener("error", onError);
+          isCurrentSubscription = false;
         };
       }
+
+      const onError = () => {
+        if (!isCurrentSubscription || sessionIdRef.current !== sessionId) {
+          return;
+        }
+
+        setErrorState({
+          error: new Error(`MediaRecorder encountered an unknown error.`),
+          sessionId,
+        });
+      };
+      recorder.addEventListener("error", onError);
+
+      return function teardown() {
+        isCurrentSubscription = false;
+        recorder.removeEventListener("error", onError);
+      };
     },
-    [recorder],
+    [recorder, sessionIdRef],
   );
 
-  return error;
+  const error =
+    errorState?.sessionId === sessionIdRef.current ? errorState.error : null;
+
+  return [error, setError] as const;
 }
