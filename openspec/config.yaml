@@ -1,0 +1,34 @@
+schema: spec-driven
+
+# Project context (optional)
+# This is shown to AI when creating artifacts.
+context: |
+  Monorepo: @bengreenier/react-user-media
+  Package: packages/react-user-media — React hooks/components for getUserMedia, getDisplayMedia, enumerateDevices, MediaRecorder
+  Examples: packages/examples — Vite demo app
+
+  Tech stack:
+  - React 19+ (peerDependency >=19), TypeScript
+  - pnpm workspaces, Node >=22.12.0
+  - Biome for lint/format
+  - Vitest 3 + Playwright browser mode for tests
+  - Vite 7 for examples
+
+  Conventions:
+  - Conventional commits
+  - Feature branches: cursor/<descriptive-name>-86f9
+  - Prefer discriminated union hook state (idle/loading/ready/error)
+  - Lifecycle correctness: request generations, unmount cleanup, no stream leaks
+
+  Domain notes:
+  - Browser MediaCapture / WebRTC media APIs; secure context required
+  - Stale draft PR #6 explored worker + WebCodecs abstractions (mid-refactor, not on main)
+  - Current main has no workers/ module
+
+# Per-artifact rules (optional)
+rules:
+  proposal:
+    - Keep proposals under 500 words
+    - Always include a "Non-goals" section
+  tasks:
+    - Prefer small, verifiable tasks with tests where behavior changes
