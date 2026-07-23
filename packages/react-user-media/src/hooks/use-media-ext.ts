@@ -1,10 +1,10 @@
 import { useSyncExternalStore, useCallback, useRef } from "react";
 
-const EMPTY_TRACKS: MediaStreamTrack[] = [];
+const EMPTY_TRACKS = Object.freeze([]) as MediaStreamTrack[];
 
 function hasSameTrackIds(
-  latestTracks: MediaStreamTrack[],
-  cachedTracks: MediaStreamTrack[],
+  latestTracks: readonly MediaStreamTrack[],
+  cachedTracks: readonly MediaStreamTrack[],
 ) {
   if (latestTracks.length !== cachedTracks.length) {
     return false;
@@ -27,15 +27,43 @@ function useMediaTracksByKind(
   media: MediaStream | undefined,
   kind: MediaStreamTrack["kind"],
 ) {
-  const tracks = useMediaTracks(media);
   const trackCache = useRef<MediaStreamTrack[]>(EMPTY_TRACKS);
-  const latestTracks = tracks.filter((track) => track.kind === kind);
 
-  if (!hasSameTrackIds(latestTracks, trackCache.current)) {
-    trackCache.current = latestTracks.length > 0 ? latestTracks : EMPTY_TRACKS;
-  }
+  return useSyncExternalStore(
+    useCallback(
+      function subscribe(callback) {
+        media?.addEventListener("addtrack", callback);
+        media?.addEventListener("removetrack", callback);
 
-  return trackCache.current;
+        return function unsubscribe() {
+          media?.removeEventListener("addtrack", callback);
+          media?.removeEventListener("removetrack", callback);
+        };
+      },
+      [media],
+    ),
+    useCallback(
+      function getSnapshot() {
+        if (!media) {
+          trackCache.current = EMPTY_TRACKS;
+
+          return trackCache.current;
+        }
+
+        const latestTracks = media
+          .getTracks()
+          .filter((track) => track.kind === kind);
+
+        if (!hasSameTrackIds(latestTracks, trackCache.current)) {
+          trackCache.current =
+            latestTracks.length > 0 ? latestTracks : EMPTY_TRACKS;
+        }
+
+        return trackCache.current;
+      },
+      [kind, media],
+    ),
+  );
 }
 
 /**

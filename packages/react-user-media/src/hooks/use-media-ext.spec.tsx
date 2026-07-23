@@ -91,6 +91,27 @@ test("returns a stable empty array when media becomes undefined", async () => {
   expect(result.current).toBe(emptyTracks);
 });
 
+test("does not poison empty track snapshots when a caller mutates one", async () => {
+  const track = await createTrack("audio");
+  const { result } = renderHook(() => useMediaTracks(undefined));
+  const emptyTracks = result.current;
+
+  expect(emptyTracks).toEqual([]);
+
+  let mutationError: unknown;
+  try {
+    emptyTracks.push(track);
+  } catch (error) {
+    mutationError = error;
+  }
+
+  const { result: nextResult } = renderHook(() => useMediaTracks(undefined));
+
+  expect(nextResult.current).toEqual([]);
+  expect(Object.isFrozen(emptyTracks)).toBe(true);
+  expect(mutationError).toBeInstanceOf(TypeError);
+});
+
 test("keeps audio track references stable when only video tracks change", async () => {
   const audioTrack = await createTrack("audio");
   const videoTrack = await createTrack("video");
