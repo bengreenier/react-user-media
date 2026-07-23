@@ -9,10 +9,12 @@
     "doc": "pnpm -r run --if-present doc",
     "test": "pnpm -r run --if-present test",
     "lint": "biome check .",
-    "format": "biome check --write ."
+    "format": "biome check --write .",
+    "openspec:validate": "openspec validate --all --strict"
   },
   "devDependencies": {
     "@biomejs/biome": "*",
+    "@fission-ai/openspec": "*",
     "@types/node": "*",
     "@vitest/browser": "*",
     "playwright": "*",
@@ -26,6 +28,7 @@
   "pnpm": {
     "overrides": {
       "@biomejs/biome": "^2.5.5",
+      "@fission-ai/openspec": "^1.6.0",
       "@types/node": "^22.15.0",
       "@types/react": "19.2.17",
       "@types/react-dom": "19.2.3",
@@ -39,6 +42,7 @@
       "vitest": "^3.2.7"
     },
     "onlyBuiltDependencies": [
+      "@fission-ai/openspec",
       "esbuild",
       "msw"
     ]

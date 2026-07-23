@@ -18,12 +18,15 @@ This repository is a monorepo, you're probably looking for one of it's child pac
 
 ```bash
 pnpm install
-pnpm lint      # Biome
-pnpm format    # Biome --write
+pnpm lint               # Biome
+pnpm format             # Biome --write
+pnpm openspec:validate  # OpenSpec change/spec structure
 pnpm build
-pnpm test      # Vitest 3 + Playwright
-pnpm dev       # examples via Vite 7
+pnpm test               # Vitest 3 + Playwright
+pnpm dev                # examples via Vite 7
 ```
+
+Spec-driven changes live under `openspec/` (Cursor: `/opsx:propose`, `/opsx:apply`, `/opsx:archive`). CI runs `pnpm openspec:validate` on every PR.
 
 ## License
 
