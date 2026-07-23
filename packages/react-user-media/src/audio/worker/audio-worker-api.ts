@@ -34,6 +34,7 @@ export function createAudioWorkerApi(
       assertActive();
 
       if (
+        nextOptions.sampleRate === undefined ||
         !Number.isFinite(nextOptions.sampleRate) ||
         nextOptions.sampleRate <= 0
       ) {
@@ -48,7 +49,7 @@ export function createAudioWorkerApi(
     async processFrame(frame) {
       assertActive();
 
-      if (options === null) {
+      if (options === null || options.sampleRate === undefined) {
         throw new Error(
           "Audio worker must be configured before processing frames",
         );
@@ -100,6 +101,6 @@ function calculateLevels(frame: AudioFrame): AudioProcessResult {
     frameLength: frame.channelData[0]?.length ?? 0,
     peak,
     rms: sampleCount === 0 ? 0 : Math.sqrt(sumOfSquares / sampleCount),
-    timestamp: frame.timestamp,
+    timestamp: frame.timestamp ?? 0,
   };
 }

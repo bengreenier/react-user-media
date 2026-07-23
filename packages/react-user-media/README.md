@@ -25,19 +25,32 @@ A collection of hooks and components for easier access to [`getUserMedia`](https
   - `useMediaVideoDevices()`
 
 - `useMediaRecorder()`
+- `useMediaAudioProcessor({ strategy: "worklet" })`
 - `useAudioWorker()` — asynchronous PCM buffer jobs in a Dedicated Worker
 
-## Components
-
-- `AudioPlayer`
-- `VideoPlayer`
-
-## Utility functions
-
-- `getSupportedConstraints()`
-- `closeMedia(...)`
-
 ## Audio processing strategies
+
+Choose the browser primitive that matches the workload:
+
+| Need | Strategy |
+| --- | --- |
+| Live microphone meters, lightweight effects, or VAD-lite | `audio-worklet` (`useMediaAudioProcessor`) |
+| Offline, heavy, or buffer-oriented jobs | `audio-worker` (`useAudioWorker` + Comlink) |
+| Live DSP with an RPC-shaped control plane | `audio-worklet-rpc` (planned) |
+
+### Worklet (realtime)
+
+The worklet hook receives a caller-owned `MediaStream`; it creates a
+`MediaStreamAudioSourceNode` → `AudioWorkletNode` → silent gain graph and
+never stops the stream's tracks when stopped or unmounted.
+
+`@bengreenier/react-user-media/audio-worklet` provides
+`getLevelMeterWorkletModuleUrl()` and `addLevelMeterWorklet()` for ESM
+consumers. Pass `workletModuleUrl` to `useMediaAudioProcessor` when testing or
+when a bundler needs an explicit URL. The default module-relative URL is not
+guaranteed under CJS `require`.
+
+### Worker (async jobs)
 
 Use `useAudioWorker()` for asynchronous or offline PCM jobs. Readiness changes
 after asynchronous worker configuration, so call the ready Comlink proxy's
@@ -48,6 +61,7 @@ reports RMS and peak levels.
 ```tsx
 import * as Comlink from "comlink";
 import { useEffect } from "react";
+import { useAudioWorker } from "@bengreenier/react-user-media";
 
 function LevelAnalyzer() {
   const { api, isReady, start } = useAudioWorker();
@@ -72,10 +86,23 @@ function LevelAnalyzer() {
 }
 ```
 
-This module worker factory is ESM-only. CommonJS consumers and test runners can
-provide `createWorker` to `useAudioWorker` for their bundler-compatible worker.
-`useAudioWorker` never acquires capture or stops tracks. Choose the audio-worklet
-strategy for realtime live-stream DSP; this worker strategy is for buffer jobs.
+`@bengreenier/react-user-media/audio-worker` provides `createAudioWorker()`.
+CommonJS consumers and test runners can pass `createWorker` to `useAudioWorker`
+instead. `useAudioWorker` never acquires capture or stops tracks.
+
+The worker surface uses `configure` / process / `subscribe` / `dispose` so a
+future WebCodecs / `VideoFrame` job API can share the same lifecycle without
+replacing these audio APIs.
+
+## Components
+
+- `AudioPlayer`
+- `VideoPlayer`
+
+## Utility functions
+
+- `getSupportedConstraints()`
+- `closeMedia(...)`
 
 ## Contributing
 

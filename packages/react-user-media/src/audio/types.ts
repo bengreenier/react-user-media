@@ -1,31 +1,14 @@
-/**
- * A PCM audio frame that can be moved to a Dedicated Worker.
- *
- * Each channel owns an independent `Float32Array`. Pass its underlying
- * `ArrayBuffer`s to `Comlink.transfer` when submitting frames on the hot path.
- */
-export interface AudioFrame {
-  channelData: Float32Array[];
-  sampleRate: number;
-  timestamp?: number;
-}
+export type {
+  AudioFrame,
+  AudioProcessOptions,
+  AudioProcessResult,
+} from "../audio";
 
-/**
- * Configuration shared by the audio worker's level-analysis jobs.
- */
-export interface AudioProcessOptions {
-  sampleRate: number;
-}
-
-/**
- * Level metrics calculated for an {@link AudioFrame}.
- */
-export interface AudioProcessResult {
-  frameLength: number;
-  peak: number;
-  rms: number;
-  timestamp?: number;
-}
+import type {
+  AudioFrame,
+  AudioProcessOptions,
+  AudioProcessResult,
+} from "../audio";
 
 export type AudioProcessSubscriber = (
   result: AudioProcessResult,
