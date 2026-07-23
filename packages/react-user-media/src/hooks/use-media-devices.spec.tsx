@@ -143,6 +143,40 @@ function replaceMediaDevices(mediaDevices: MediaDevices | undefined) {
   };
 }
 
+function DefaultOptionsDevicesTestComponent() {
+  const { isLoading, isError, isReady, error, devices } = useMediaDevices();
+
+  return (
+    <pre data-testid="media-devices-status">
+      {JSON.stringify({
+        isLoading,
+        isError,
+        isReady,
+        error: error?.message ?? null,
+        deviceCount: devices?.length ?? null,
+      } satisfies MediaDevicesStatus)}
+    </pre>
+  );
+}
+
+test("does not throw when mediaDevices is unavailable with default options", () => {
+  const restoreMediaDevices = replaceMediaDevices(undefined);
+
+  try {
+    expect(() => render(<DefaultOptionsDevicesTestComponent />)).not.toThrow();
+
+    expect(readStatus()).toEqual({
+      isLoading: false,
+      isError: false,
+      isReady: false,
+      error: null,
+      deviceCount: null,
+    });
+  } finally {
+    restoreMediaDevices();
+  }
+});
+
 test("surfaces an error when mediaDevices is unavailable", async () => {
   const restoreMediaDevices = replaceMediaDevices(undefined);
 
