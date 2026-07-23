@@ -39,22 +39,36 @@ A collection of hooks and components for easier access to [`getUserMedia`](https
 
 ## Audio processing strategies
 
-Use `useAudioWorker()` for asynchronous or offline PCM jobs. Start it, then call
-the ready Comlink proxy's `processFrame` with `Float32Array` channel data wrapped
-in `Comlink.transfer` to avoid copying buffers. It reports RMS and peak levels.
+Use `useAudioWorker()` for asynchronous or offline PCM jobs. Readiness changes
+after asynchronous worker configuration, so call the ready Comlink proxy's
+`processFrame` from an `isReady`-dependent effect or event handler. Wrap
+`Float32Array` channel data in `Comlink.transfer` to avoid copying buffers. It
+reports RMS and peak levels.
 
-```ts
-const { api, isReady, start } = useAudioWorker();
+```tsx
+import * as Comlink from "comlink";
+import { useEffect } from "react";
 
-start();
-if (isReady && api) {
-  const samples = new Float32Array([0.5, -0.5]);
-  const result = await api.processFrame(
-    Comlink.transfer(
-      { channelData: [samples], sampleRate: 48_000 },
-      [samples.buffer],
-    ),
-  );
+function LevelAnalyzer() {
+  const { api, isReady, start } = useAudioWorker();
+
+  useEffect(() => {
+    start();
+  }, [start]);
+
+  useEffect(() => {
+    if (!isReady || !api) {
+      return;
+    }
+
+    const samples = new Float32Array([0.5, -0.5]);
+    void api.processFrame(
+      Comlink.transfer(
+        { channelData: [samples], sampleRate: 48_000 },
+        [samples.buffer],
+      ),
+    );
+  }, [api, isReady]);
 }
 ```
 

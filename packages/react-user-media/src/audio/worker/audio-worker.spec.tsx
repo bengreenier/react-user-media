@@ -1,6 +1,7 @@
 import "@testing-library/jest-dom";
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import * as Comlink from "comlink";
+import { useEffect } from "react";
 import { afterEach, expect, test, vi } from "vitest";
 import type { AudioWorkerApi } from "../types";
 import { useAudioWorker } from "../use-audio-worker";
@@ -22,17 +23,33 @@ function createEndpoint(api: AudioWorkerApi) {
   };
 }
 
-function WorkerTestComponent({ createWorker }: { createWorker: () => Worker }) {
+function WorkerTestComponent({
+  createWorker,
+  onStateChange,
+}: {
+  createWorker: () => Worker;
+  onStateChange?: (state: string) => void;
+}) {
   const { api, error, isError, isIdle, isLoading, isReady, start, stop } =
     useAudioWorker({ createWorker });
+
+  const state = isReady
+    ? "ready"
+    : isLoading
+      ? "loading"
+      : isError
+        ? "error"
+        : "idle";
+
+  useEffect(() => {
+    onStateChange?.(state);
+  }, [onStateChange, state]);
 
   return (
     <>
       <button onClick={() => start()}>Start</button>
       <button onClick={() => stop()}>Stop</button>
-      <p data-testid="state">
-        {isReady ? "ready" : isLoading ? "loading" : isError ? "error" : "idle"}
-      </p>
+      <p data-testid="state">{state}</p>
       <p data-testid="api">{api ? "available" : "none"}</p>
       <p data-testid="error">{error?.message ?? "none"}</p>
       <p data-testid="idle">{String(isIdle)}</p>
@@ -40,12 +57,13 @@ function WorkerTestComponent({ createWorker }: { createWorker: () => Worker }) {
   );
 }
 
-test("computes RMS and peak and notifies proxied subscribers", async () => {
-  const api = createAudioWorkerApi();
+test("delivers results to a Comlink-proxied subscriber", async () => {
+  const { worker } = createEndpoint(createAudioWorkerApi());
+  const api = Comlink.wrap<AudioWorkerApi>(worker);
   const onResult = vi.fn();
 
   await api.configure({ sampleRate: 48_000 });
-  await api.subscribe(onResult);
+  await api.subscribe(Comlink.proxy(onResult));
 
   const result = await api.processFrame({
     channelData: [new Float32Array([0.5, -0.5])],
@@ -53,7 +71,21 @@ test("computes RMS and peak and notifies proxied subscribers", async () => {
   });
 
   expect(result).toMatchObject({ peak: 0.5, rms: 0.5, frameLength: 2 });
-  expect(onResult).toHaveBeenCalledWith(result);
+  await waitFor(() => {
+    expect(onResult).toHaveBeenCalledWith(result);
+  });
+
+  await api.dispose();
+  await expect(
+    api.processFrame({
+      channelData: [new Float32Array([0.5])],
+      sampleRate: 48_000,
+    }),
+  ).rejects.toThrow("disposed");
+  expect(onResult).toHaveBeenCalledOnce();
+
+  api[Comlink.releaseProxy]();
+  worker.terminate();
 });
 
 test("fails closed after dispose", async () => {
@@ -111,6 +143,52 @@ test("releases the proxy and terminates a custom worker on stop", async () => {
   expect(terminate).toHaveBeenCalledOnce();
   expect(screen.getByTestId("state")).toHaveTextContent("idle");
   expect(screen.getByTestId("api")).toHaveTextContent("none");
+});
+
+test("releases and terminates an active worker on unmount", async () => {
+  let resolveConfigure!: () => void;
+  const configure = new Promise<void>((resolve) => {
+    resolveConfigure = resolve;
+  });
+  const finalizer = vi.fn();
+  const api = Object.assign(
+    createAudioWorkerApi({ configure: () => configure }),
+    {
+      [Comlink.finalizer]: finalizer,
+    },
+  );
+  const { worker, terminate } = createEndpoint(api);
+  const onStateChange = vi.fn();
+
+  const { unmount } = render(
+    <WorkerTestComponent
+      createWorker={() => worker}
+      onStateChange={onStateChange}
+    />,
+  );
+
+  act(() => {
+    screen.getByText("Start").click();
+  });
+
+  await waitFor(() => {
+    expect(screen.getByTestId("state")).toHaveTextContent("loading");
+  });
+
+  unmount();
+
+  await waitFor(() => {
+    expect(finalizer).toHaveBeenCalledOnce();
+  });
+  expect(terminate).toHaveBeenCalledOnce();
+
+  const stateUpdatesBeforeLateConfigure = onStateChange.mock.calls.length;
+  await act(async () => {
+    resolveConfigure();
+    await configure;
+  });
+
+  expect(onStateChange).toHaveBeenCalledTimes(stateUpdatesBeforeLateConfigure);
 });
 
 test("reports worker initialization failures without leaking a worker", async () => {
