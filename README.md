@@ -14,6 +14,17 @@ This repository is a monorepo, you're probably looking for one of it's child pac
 - [react-user-media](./packages/react-user-media/)
 - [examples](./packages/examples/)
 
+## Development
+
+```bash
+pnpm install
+pnpm lint      # Biome
+pnpm format    # Biome --write
+pnpm build
+pnpm test      # Vitest 3 + Playwright
+pnpm dev       # examples via Vite 7
+```
+
 ## License
 
 Dual-licensed under Apache 2.0 + MIT.

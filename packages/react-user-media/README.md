@@ -42,14 +42,21 @@ Please feel free to open any issues or PRs!
 
 ### Building locally
 
-This project uses [pnpm](https://pnpm.io) for dependency management, and expects a local [Node.js](https://nodejs.org/) installation for dev and testing.
+This project uses [pnpm](https://pnpm.io) for dependency management. Local development requires **Node.js 22.12+** (Vite 7) and React 19 for the workspace packages.
+
+Toolchain:
+
+- **Lint / format:** [Biome](https://biomejs.dev) (`pnpm lint`, `pnpm format`)
+- **Tests:** [Vitest](https://vitest.dev) 3 with Playwright browser mode
+- **Examples / bundling:** [Vite](https://vite.dev) 7
 
 Then just `pnpm run`:
 
 - `build` - builds the project
-- `dev` - starts hosting the examples for local development.
-- `test` - runs tests.
-- `lint` - runs the linter.
+- `dev` - starts hosting the examples for local development
+- `test` - runs tests
+- `lint` - runs Biome checks
+- `format` - applies Biome formatting fixes
 
 ## License
 
