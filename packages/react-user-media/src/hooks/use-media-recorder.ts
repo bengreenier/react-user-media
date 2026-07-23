@@ -215,7 +215,7 @@ export function useMediaRecorder(): RecorderState {
 
   const recorderState = useMediaRecorderState(recorder);
 
-  const [error, setError] = useMediaRecorderError(recorder);
+  const [error, setError] = useMediaRecorderError(recorder, sessionIdRef);
   const isError = error !== null;
   const isRecording = !isError && recorderState === "recording";
   const isPaused = !isError && recorderState === "paused";
@@ -263,7 +263,13 @@ export function useMediaRecorder(): RecorderState {
         return;
       }
 
-      dataAvailableHandler(ev, setSegments);
+      dataAvailableHandler(ev, function setSegmentsForSession(value) {
+        if (sessionIdRef.current !== sessionId) {
+          return;
+        }
+
+        setSegments(value);
+      });
     };
 
     recorder.addEventListener("dataavailable", onDataAvailable);
@@ -395,28 +401,62 @@ function useMediaRecorderState(recorder: MediaRecorder | null) {
  * @param recorder the {@link MediaRecorder} to observe.
  * @returns The `error`, if any.
  */
-function useMediaRecorderError(recorder: MediaRecorder | null) {
-  const [error, setError] = useState<Error | null>(null);
+function useMediaRecorderError(
+  recorder: MediaRecorder | null,
+  sessionIdRef: React.MutableRefObject<number>,
+) {
+  const [errorState, setErrorState] = useState<{
+    error: Error;
+    sessionId: number;
+  } | null>(null);
 
-  useEffect(
-    function observeRecorderError() {
-      setError(null);
-
-      if (!recorder) {
+  const setError = useCallback(
+    function setCurrentSessionError(error: Error | null) {
+      if (error === null) {
+        setErrorState(null);
         return;
       }
 
+      setErrorState({ error, sessionId: sessionIdRef.current });
+    },
+    [sessionIdRef],
+  );
+
+  useEffect(
+    function observeRecorderError() {
+      const sessionId = sessionIdRef.current;
+      let isCurrentSubscription = true;
+
+      setErrorState(null);
+
+      if (!recorder) {
+        return function teardown() {
+          isCurrentSubscription = false;
+        };
+      }
+
       const onError = () => {
-        setError(new Error(`MediaRecorder encountered an unknown error.`));
+        if (!isCurrentSubscription || sessionIdRef.current !== sessionId) {
+          return;
+        }
+
+        setErrorState({
+          error: new Error(`MediaRecorder encountered an unknown error.`),
+          sessionId,
+        });
       };
       recorder.addEventListener("error", onError);
 
       return function teardown() {
+        isCurrentSubscription = false;
         recorder.removeEventListener("error", onError);
       };
     },
-    [recorder],
+    [recorder, sessionIdRef],
   );
+
+  const error =
+    errorState?.sessionId === sessionIdRef.current ? errorState.error : null;
 
   return [error, setError] as const;
 }

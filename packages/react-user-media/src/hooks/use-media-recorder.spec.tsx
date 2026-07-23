@@ -9,6 +9,7 @@ class MockMediaRecorder extends EventTarget {
   static instances: MockMediaRecorder[] = [];
 
   readonly startCalls: unknown[][] = [];
+  readonly listenerCounts = new Map<string, number>();
   readonly media: MediaStream;
   readonly options?: MediaRecorderOptions;
   state: RecordingState = "inactive";
@@ -20,6 +21,27 @@ class MockMediaRecorder extends EventTarget {
     this.media = media;
     this.options = options;
     MockMediaRecorder.instances.push(this);
+  }
+
+  override addEventListener(
+    type: string,
+    callback: EventListenerOrEventListenerObject | null,
+    options?: AddEventListenerOptions | boolean,
+  ) {
+    this.listenerCounts.set(type, (this.listenerCounts.get(type) ?? 0) + 1);
+    super.addEventListener(type, callback, options);
+  }
+
+  override removeEventListener(
+    type: string,
+    callback: EventListenerOrEventListenerObject | null,
+    options?: EventListenerOptions | boolean,
+  ) {
+    this.listenerCounts.set(
+      type,
+      Math.max((this.listenerCounts.get(type) ?? 0) - 1, 0),
+    );
+    super.removeEventListener(type, callback, options);
   }
 
   start(...args: unknown[]) {
@@ -134,6 +156,51 @@ describe("useMediaRecorder lifecycle", () => {
     );
   });
 
+  test("ignores async custom dataAvailableHandler callbacks from previous sessions after restart", async () => {
+    const deferredCallbacks: (() => void)[] = [];
+
+    function AsyncHandlerTestComponent() {
+      const recorder = useMediaRecorder();
+
+      return (
+        <>
+          <button
+            onClick={() =>
+              act(() =>
+                recorder.startRecording(mockStream, {
+                  dataAvailableHandler(ev, callback) {
+                    deferredCallbacks.push(() =>
+                      callback((current) => current.concat(ev.data)),
+                    );
+                  },
+                }),
+              )
+            }
+          >
+            Start Async
+          </button>
+          <p data-testid="segments-length">{recorder.segments.length}</p>
+        </>
+      );
+    }
+
+    render(<AsyncHandlerTestComponent />);
+
+    await userEvent.click(await screen.findByText("Start Async"));
+    act(() => {
+      MockMediaRecorder.instances[0]?.dispatchData(new Blob(["old"]));
+    });
+    expect(deferredCallbacks).toHaveLength(1);
+
+    await userEvent.click(await screen.findByText("Start Async"));
+    expect(MockMediaRecorder.instances).toHaveLength(2);
+    expect(screen.getByTestId("segments-length")).toHaveTextContent("0");
+
+    act(() => deferredCallbacks[0]());
+
+    expect(screen.getByTestId("segments-length")).toHaveTextContent("0");
+  });
+
   test("clears recorder errors when a new recording starts", async () => {
     render(<RecorderLifecycleTestComponent />);
 
@@ -152,6 +219,45 @@ describe("useMediaRecorder lifecycle", () => {
     await waitFor(() =>
       expect(screen.getByTestId("is-error")).toHaveTextContent("false"),
     );
+  });
+
+  test("ignores late errors from previous recorder sessions after restart", async () => {
+    function LateErrorTestComponent() {
+      const recorder = useMediaRecorder();
+
+      return (
+        <>
+          <button onClick={() => act(() => recorder.startRecording(mockStream))}>
+            Start
+          </button>
+          <button
+            onClick={() => {
+              const previousRecorder = MockMediaRecorder.instances.at(-1);
+              act(() => {
+                recorder.startRecording(mockStream);
+                previousRecorder?.dispatchRecorderError();
+              });
+            }}
+          >
+            Restart With Late Error
+          </button>
+          <p data-testid="is-error">{String(recorder.isError)}</p>
+        </>
+      );
+    }
+
+    render(<LateErrorTestComponent />);
+
+    await userEvent.click(await screen.findByText("Start"));
+    await waitFor(() =>
+      expect(
+        MockMediaRecorder.instances[0]?.listenerCounts.get("error"),
+      ).toBeGreaterThan(0),
+    );
+
+    await userEvent.click(await screen.findByText("Restart With Late Error"));
+
+    expect(screen.getByTestId("is-error")).toHaveTextContent("false");
   });
 
   test("finalizes even when stop yields no segments", async () => {
