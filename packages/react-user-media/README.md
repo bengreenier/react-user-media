@@ -2,6 +2,12 @@
 
 A collection of hooks and components for easier access to [`getUserMedia`](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia), [`getDisplayMedia`](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getDisplayMedia), and [`enumerateDevices`](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/enumerateDevices) in [React](https://react.dev).
 
+## Requirements
+
+- Node.js 22+
+- React 18 or 19 (`peerDependencies`: `react >= 18`)
+- Secure context / modern browser APIs for `getUserMedia`, `getDisplayMedia`, and `enumerateDevices`
+
 ## Hooks
 
 - `useMedia('user')`
