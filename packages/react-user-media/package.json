@@ -35,7 +35,7 @@
     "lint": "biome check"
   },
   "peerDependencies": {
-    "react": ">=18"
+    "react": ">=19"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.0",
