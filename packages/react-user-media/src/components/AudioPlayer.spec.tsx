@@ -29,3 +29,26 @@ test("plays back userMedia audio", async () => {
 
   expect(player.played.length).toBeGreaterThan(0);
 });
+
+test("clears srcObject on unmount", () => {
+  const stream = new MediaStream();
+  let element: HTMLAudioElement | null = null;
+
+  const { unmount } = render(
+    <AudioPlayer
+      ref={(el) => {
+        if (el) {
+          element = el;
+        }
+      }}
+      media={stream}
+    />,
+  );
+
+  expect(element).not.toBeNull();
+  expect(element!.srcObject).toBe(stream);
+
+  unmount();
+
+  expect(element!.srcObject).toBeNull();
+});

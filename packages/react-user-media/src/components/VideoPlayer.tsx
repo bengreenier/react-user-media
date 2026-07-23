@@ -3,6 +3,7 @@ import {
   forwardRef,
   VideoHTMLAttributes,
   useCallback,
+  useRef,
 } from "react";
 
 type VideoElementProps = DetailedHTMLProps<
@@ -14,7 +15,7 @@ type VideoElementProps = DetailedHTMLProps<
  * React props for {@link VideoPlayer}.
  */
 export interface VideoPlayerProps
-  extends Omit<VideoElementProps, keyof Pick<VideoElementProps, "src">> {
+  extends Omit<VideoElementProps, "src" | "srcObject"> {
   /**
    * The {@link MediaProvider} instance to play.
    */
@@ -22,25 +23,33 @@ export interface VideoPlayerProps
 }
 
 /**
- * Component for easier audio playback. Wraps {@link HTMLVideoElement|&lt;video&gt;}.
+ * Component for easier video playback. Wraps {@link HTMLVideoElement|&lt;video&gt;}.
  *
  * See {@link VideoPlayerProps}.
  */
 export const VideoPlayer = forwardRef<HTMLVideoElement, VideoPlayerProps>(
   function VideoPlayer(props, ref) {
     const { media, ...rest } = props;
+    const elementRef = useRef<HTMLVideoElement | null>(null);
 
     const setRef = useCallback(
-      (element: HTMLVideoElement) => {
+      (element: HTMLVideoElement | null) => {
         if (typeof ref === "function") {
-          // Pass the DOM element to the callback ref
           ref(element);
         } else if (ref) {
-          // Assign the DOM element to the object ref
           ref.current = element;
         }
 
-        if (element) {
+        if (element === null) {
+          if (elementRef.current) {
+            elementRef.current.srcObject = null;
+            elementRef.current = null;
+          }
+        } else {
+          if (elementRef.current && elementRef.current !== element) {
+            elementRef.current.srcObject = null;
+          }
+          elementRef.current = element;
           element.srcObject = media;
         }
       },
@@ -50,3 +59,5 @@ export const VideoPlayer = forwardRef<HTMLVideoElement, VideoPlayerProps>(
     return <video ref={setRef} {...rest} />;
   },
 );
+
+VideoPlayer.displayName = "VideoPlayer";
