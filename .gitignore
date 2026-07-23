@@ -28,5 +28,6 @@ __screenshots__
 coverage
 
 # docs
+docs_out
 
-docs_out*.tsbuildinfo
+*.tsbuildinfo
