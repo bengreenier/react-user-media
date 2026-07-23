@@ -2,6 +2,7 @@ import "@testing-library/jest-dom";
 import { userEvent } from "@vitest/browser/context";
 import { render, screen, act } from "@testing-library/react";
 import { AudioPlayer } from "./AudioPlayer";
+import { getHostRefCallback } from "./media-player-test-utils";
 import { useMedia } from "../";
 
 function UserMediaTestComponent() {
@@ -51,4 +52,20 @@ test("clears srcObject on unmount", () => {
   unmount();
 
   expect(element!.srcObject).toBeNull();
+});
+
+test("clears srcObject on previous element when DOM element is replaced", () => {
+  const stream = new MediaStream();
+  const { container } = render(<AudioPlayer media={stream} />);
+  const previousElement = container.querySelector("audio")!;
+  const nextElement = document.createElement("audio");
+
+  expect(previousElement.srcObject).toBe(stream);
+
+  act(() => {
+    getHostRefCallback(previousElement)(nextElement);
+  });
+
+  expect(previousElement.srcObject).toBeNull();
+  expect(nextElement.srcObject).toBe(stream);
 });
