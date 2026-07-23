@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { closeMedia } from "../close-media";
 import { ShallowShapeOf } from "../types";
 
 // base types for MediaStateBase
@@ -48,6 +49,22 @@ interface MediaStateBase<T> {
    * Requests new {@link media} on behalf of the user.
    */
   request(options?: T): void;
+
+  /**
+   * Stops the current {@link media} and returns to idle.
+   */
+  stop(): void;
+}
+
+/**
+ * The idle state of {@link useMedia} response.
+ */
+interface UserMediaIdleState extends MediaStateBase<UserMediaBaseType> {
+  isLoading: false;
+  isError: false;
+  isReady: false;
+  error: null;
+  media: undefined;
 }
 
 /**
@@ -87,9 +104,21 @@ interface UserMediaReadyState extends MediaStateBase<UserMediaBaseType> {
  * The state of {@link useMedia} response.
  */
 export type UserMediaState =
+  | UserMediaIdleState
   | UserMediaErrorState
   | UserMediaLoadingState
   | UserMediaReadyState;
+
+/**
+ * The displayMedia idle state of {@link useMedia} response.
+ */
+interface DisplayMediaIdleState extends MediaStateBase<DisplayMediaBaseType> {
+  isLoading: false;
+  isError: false;
+  isReady: false;
+  error: null;
+  media: undefined;
+}
 
 /**
  * The displayMedia error state of {@link useMedia} response.
@@ -129,9 +158,14 @@ interface DisplayMediaReadyState extends MediaStateBase<DisplayMediaBaseType> {
  * The displayMedia state of {@link useMedia} response.
  */
 export type DisplayMediaState =
+  | DisplayMediaIdleState
   | DisplayMediaErrorState
   | DisplayMediaLoadingState
   | DisplayMediaReadyState;
+
+function toError(error: unknown) {
+  return error instanceof Error ? error : new Error(String(error));
+}
 
 // utility types to make defining `useMedia` easier.
 
@@ -184,16 +218,35 @@ export function useMedia<
   const [media, setMedia] = useState<MediaStream | undefined>(undefined);
   const [error, setError] = useState<Error | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const mediaRef = useRef<MediaStream | undefined>(undefined);
+  const requestGeneration = useRef(0);
 
   const isError = useMemo(() => error !== null, [error]);
   const isReady = useMemo(() => typeof media !== "undefined", [media]);
+
+  const stop = useCallback(function stopMedia() {
+    requestGeneration.current += 1;
+    closeMedia(mediaRef.current);
+    mediaRef.current = undefined;
+    setMedia(undefined);
+    setError(null);
+    setIsLoading(false);
+  }, []);
 
   const request = useCallback(
     function requestUserMedia(
       ...args: Parameters<inferMediaDef<TType>["requestType"]["request"]>
     ) {
-      if (type === "user" && !navigator.mediaDevices.getUserMedia) {
+      const currentRequestGeneration = requestGeneration.current + 1;
+      requestGeneration.current = currentRequestGeneration;
+
+      closeMedia(mediaRef.current);
+      mediaRef.current = undefined;
+      setMedia(undefined);
+
+      if (type === "user" && !navigator.mediaDevices?.getUserMedia) {
         // see https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia
+        setIsLoading(false);
         return setError(
           new Error(
             `getUserMedia is not available. Are you using a modern browser?`,
@@ -201,8 +254,9 @@ export function useMedia<
         );
       }
 
-      if (type === "display" && !navigator.mediaDevices.getDisplayMedia) {
+      if (type === "display" && !navigator.mediaDevices?.getDisplayMedia) {
         // see https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getDisplayMedia
+        setIsLoading(false);
         return setError(
           new Error(
             `getDisplayMedia is not available. Are you in a secure context?`,
@@ -220,16 +274,28 @@ export function useMedia<
             .getUserMedia(...args)
             .then(
               function onRequestSuccess(userMedia) {
+                if (requestGeneration.current !== currentRequestGeneration) {
+                  closeMedia(userMedia);
+                  return;
+                }
+
+                mediaRef.current = userMedia;
                 setMedia(userMedia);
                 setError(null);
               },
               function onRequestError(error) {
-                setError(error);
+                if (requestGeneration.current !== currentRequestGeneration) {
+                  return;
+                }
+
+                setError(toError(error));
                 setMedia(undefined);
               },
             )
             .then(function finalizeRequest() {
-              setIsLoading(false);
+              if (requestGeneration.current === currentRequestGeneration) {
+                setIsLoading(false);
+              }
             });
           break;
         case "display":
@@ -237,16 +303,28 @@ export function useMedia<
             .getDisplayMedia(...args)
             .then(
               function onRequestSuccess(userMedia) {
+                if (requestGeneration.current !== currentRequestGeneration) {
+                  closeMedia(userMedia);
+                  return;
+                }
+
+                mediaRef.current = userMedia;
                 setMedia(userMedia);
                 setError(null);
               },
               function onRequestError(error) {
-                setError(error);
+                if (requestGeneration.current !== currentRequestGeneration) {
+                  return;
+                }
+
+                setError(toError(error));
                 setMedia(undefined);
               },
             )
             .then(function finalizeRequest() {
-              setIsLoading(false);
+              if (requestGeneration.current === currentRequestGeneration) {
+                setIsLoading(false);
+              }
             });
           break;
         default:
@@ -256,6 +334,14 @@ export function useMedia<
     [type],
   );
 
+  useEffect(function stopMediaOnUnmount() {
+    return function teardownMedia() {
+      requestGeneration.current += 1;
+      closeMedia(mediaRef.current);
+      mediaRef.current = undefined;
+    };
+  }, []);
+
   const state = {
     isError,
     isLoading,
@@ -263,6 +349,7 @@ export function useMedia<
     error,
     media,
     request,
+    stop,
   } satisfies ShallowShapeOf<UserMediaState | DisplayMediaState>;
 
   // we cast, as it isn't worth the runtime cost to check that this
