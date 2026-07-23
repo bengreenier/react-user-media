@@ -16,6 +16,17 @@ interface MediaDeviceStateBase {
 }
 
 /**
+ * The idle state of the {@link useMediaDevices} response.
+ */
+interface MediaDeviceIdleState extends MediaDeviceStateBase {
+  isLoading: false;
+  isError: false;
+  isReady: false;
+  error: null;
+  devices: undefined;
+}
+
+/**
  * The error state of the {@link useMediaDevices} response.
  */
 interface MediaDeviceErrorState extends MediaDeviceStateBase {
@@ -52,6 +63,7 @@ interface MediaDeviceReadyState extends MediaDeviceStateBase {
  * The state of the {@link useMediaDevices} response.
  */
 export type MediaDeviceState =
+  | MediaDeviceIdleState
   | MediaDeviceErrorState
   | MediaDeviceLoadingState
   | MediaDeviceReadyState;
@@ -112,8 +124,12 @@ export function useMediaDevices(
 
   const request = useCallback(
     function requestMediaDevices() {
-      if (!navigator.mediaDevices.enumerateDevices) {
+      const mediaDevices = navigator.mediaDevices;
+
+      if (!mediaDevices?.enumerateDevices) {
         // see https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/enumerateDevices
+        setIsLoading(false);
+        setDevices(undefined);
         return setError(
           new Error(
             `enumerateDevices is not available. Are you in a secure context?`,
@@ -125,14 +141,16 @@ export function useMediaDevices(
       setDevices(undefined);
       setError(null);
 
-      navigator.mediaDevices.enumerateDevices().then(
+      mediaDevices.enumerateDevices().then(
         function onRequestSuccess(devices) {
           setDevices(devices.filter(filter));
           setError(null);
+          setIsLoading(false);
         },
         function onRequestError(error) {
           setError(error);
           setDevices(undefined);
+          setIsLoading(false);
         },
       );
     },
@@ -141,20 +159,19 @@ export function useMediaDevices(
 
   useEffect(
     function requestMediaDevicesEvent() {
-      if (deviceChangedEvent) {
+      const mediaDevices = navigator.mediaDevices;
+
+      if (deviceChangedEvent && mediaDevices?.addEventListener) {
         // note: This only fires in secure contexts
         // see https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/devicechange_event
         const onDeviceChange = () => {
           request();
         };
 
-        navigator.mediaDevices.addEventListener("devicechange", onDeviceChange);
+        mediaDevices.addEventListener("devicechange", onDeviceChange);
 
         return function teardown() {
-          navigator.mediaDevices.removeEventListener(
-            "devicechange",
-            onDeviceChange,
-          );
+          mediaDevices.removeEventListener("devicechange", onDeviceChange);
         };
       }
     },
