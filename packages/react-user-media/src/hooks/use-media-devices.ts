@@ -123,6 +123,8 @@ export function useMediaDevices(
   const [error, setError] = useState<Error | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const requestGeneration = useRef(0);
+  const filterRef = useRef(filter);
+  filterRef.current = filter;
 
   const isError = useMemo(() => error !== null, [error]);
   const isReady = useMemo(() => typeof devices !== "undefined", [devices]);
@@ -156,7 +158,7 @@ export function useMediaDevices(
           }
 
           try {
-            setDevices(devices.filter(filter));
+            setDevices(devices.filter(filterRef.current));
             setError(null);
             setIsLoading(false);
           } catch (error) {
@@ -176,7 +178,7 @@ export function useMediaDevices(
         },
       );
     },
-    [filter],
+    [],
   );
 
   useEffect(

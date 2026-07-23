@@ -660,3 +660,58 @@ test("ignores enumerateDevices results after unmount", async () => {
     restoreEnumerateDevices();
   }
 });
+
+test("applies the latest filter when a pending request resolves", async () => {
+  const devicesRequest = createDeferred<MediaDeviceInfo[]>();
+  const restoreEnumerateDevices = replaceEnumerateDevices(
+    vi.fn(() => devicesRequest.promise),
+  );
+
+  try {
+    function ChangingFilterComponent({
+      filter,
+    }: {
+      filter: (device: MediaDeviceInfo) => boolean;
+    }) {
+      const { isReady, devices, request } = useMediaDevices({
+        deviceChangedEvent: false,
+        filter,
+      });
+
+      return (
+        <>
+          <button onClick={() => act(() => request())}>Begin Test</button>
+          <p data-testid="device-count">{devices?.length ?? "none"}</p>
+          <p data-testid="ready">{String(isReady)}</p>
+        </>
+      );
+    }
+
+    const { rerender } = render(
+      <ChangingFilterComponent filter={() => true} />,
+    );
+
+    await userEvent.click(await screen.findByText("Begin Test"));
+
+    rerender(
+      <ChangingFilterComponent
+        filter={(device) => device.kind === "audioinput"}
+      />,
+    );
+
+    await act(async () => {
+      devicesRequest.resolve([
+        createDevice("audioinput", "Mic"),
+        createDevice("videoinput", "Camera"),
+      ]);
+      await devicesRequest.promise;
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("ready")).toHaveTextContent("true");
+      expect(screen.getByTestId("device-count")).toHaveTextContent("1");
+    });
+  } finally {
+    restoreEnumerateDevices();
+  }
+});

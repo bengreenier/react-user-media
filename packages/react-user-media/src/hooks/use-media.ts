@@ -220,6 +220,7 @@ export function useMedia<
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const mediaRef = useRef<MediaStream | undefined>(undefined);
   const requestGeneration = useRef(0);
+  const typeRef = useRef(type);
 
   const isError = useMemo(() => error !== null, [error]);
   const isReady = useMemo(() => typeof media !== "undefined", [media]);
@@ -232,6 +233,23 @@ export function useMedia<
     setError(null);
     setIsLoading(false);
   }, []);
+
+  useEffect(
+    function resetWhenTypeChanges() {
+      if (typeRef.current === type) {
+        return;
+      }
+
+      typeRef.current = type;
+      requestGeneration.current += 1;
+      closeMedia(mediaRef.current);
+      mediaRef.current = undefined;
+      setMedia(undefined);
+      setError(null);
+      setIsLoading(false);
+    },
+    [type],
+  );
 
   const request = useCallback(
     function requestUserMedia(
