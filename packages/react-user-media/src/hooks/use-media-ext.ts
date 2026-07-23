@@ -1,5 +1,43 @@
 import { useSyncExternalStore, useCallback, useRef } from "react";
 
+const EMPTY_TRACKS: MediaStreamTrack[] = [];
+
+function hasSameTrackIds(
+  latestTracks: MediaStreamTrack[],
+  cachedTracks: MediaStreamTrack[],
+) {
+  if (latestTracks.length !== cachedTracks.length) {
+    return false;
+  }
+
+  const latestTrackIds = new Set(latestTracks.map((track) => track.id));
+  const cachedTrackIds = new Set(cachedTracks.map((track) => track.id));
+
+  if (latestTrackIds.size !== cachedTrackIds.size) {
+    return false;
+  }
+
+  return (
+    latestTracks.every((track) => cachedTrackIds.has(track.id)) &&
+    cachedTracks.every((track) => latestTrackIds.has(track.id))
+  );
+}
+
+function useMediaTracksByKind(
+  media: MediaStream | undefined,
+  kind: MediaStreamTrack["kind"],
+) {
+  const tracks = useMediaTracks(media);
+  const trackCache = useRef<MediaStreamTrack[]>(EMPTY_TRACKS);
+  const latestTracks = tracks.filter((track) => track.kind === kind);
+
+  if (!hasSameTrackIds(latestTracks, trackCache.current)) {
+    trackCache.current = latestTracks.length > 0 ? latestTracks : EMPTY_TRACKS;
+  }
+
+  return trackCache.current;
+}
+
 /**
  * Hook that observes {@link MediaStream.getTracks} and provides access
  * to the results.
@@ -24,21 +62,19 @@ export function useMediaTracks(media: MediaStream | undefined) {
     ),
     useCallback(
       function getSnapshot() {
-        if (media) {
-          // get tracks _always_ returns a new array
-          // so we can't rely on it's stability
-          const latestTracks = media.getTracks();
+        if (!media) {
+          trackCache.current = EMPTY_TRACKS;
 
-          // if the latest tracks and the cached tracks count are the same
-          if (latestTracks.length !== trackCache.current.length) {
-            const latestTrackIds = latestTracks.map((t) => t.id);
-            const cachedTrackIds = trackCache.current.map((t) => t.id);
+          return trackCache.current;
+        }
 
-            // and cachedTrackIds contains all the latestTrackIds
-            if (!latestTrackIds.every((id) => cachedTrackIds.includes(id))) {
-              trackCache.current = latestTracks;
-            }
-          }
+        // get tracks _always_ returns a new array
+        // so we can't rely on its stability
+        const latestTracks = media.getTracks();
+
+        if (!hasSameTrackIds(latestTracks, trackCache.current)) {
+          trackCache.current =
+            latestTracks.length > 0 ? latestTracks : EMPTY_TRACKS;
         }
 
         // in the event of a cache update, this is technically the _last_
@@ -59,7 +95,7 @@ export function useMediaTracks(media: MediaStream | undefined) {
  * @returns an array of audio {@link MediaStreamTrack}s.
  */
 export function useMediaAudioTracks(media: MediaStream | undefined) {
-  return useMediaTracks(media).filter((t) => t.kind === "audio");
+  return useMediaTracksByKind(media, "audio");
 }
 
 /**
@@ -70,7 +106,7 @@ export function useMediaAudioTracks(media: MediaStream | undefined) {
  * @returns an array of video {@link MediaStreamTrack}s.
  */
 export function useMediaVideoTracks(media: MediaStream | undefined) {
-  return useMediaTracks(media).filter((t) => t.kind === "video");
+  return useMediaTracksByKind(media, "video");
 }
 
 /**
