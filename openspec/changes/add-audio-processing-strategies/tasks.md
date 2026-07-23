@@ -15,12 +15,12 @@
 
 ## 3. Phase 2 — Dedicated Worker + Comlink
 
-- [ ] 3.1 Add `comlink` dependency; implement worker `Comlink.expose` API (`configure` / `processFrame` / `subscribe` / `dispose`)
-- [ ] 3.2 Support `Comlink.transfer` on PCM buffers; built-in RMS/peak
-- [ ] 3.3 Implement `useAudioWorker` with releaseProxy + terminate + overrides
-- [ ] 3.4 Optional stream→PCM bridge that does not stop tracks; docs point realtime to worklet
-- [ ] 3.5 Tests: transfer detachment; lifecycle/restart; subscribe+proxy; createWorker override
-- [ ] 3.6 Optional examples demo for buffer/job path
+- [x] 3.1 Add `comlink` dependency; implement worker `Comlink.expose` API (`configure` / `processFrame` / `subscribe` / `dispose`)
+- [x] 3.2 Support `Comlink.transfer` on PCM buffers; built-in RMS/peak
+- [x] 3.3 Implement `useAudioWorker` with releaseProxy + terminate + overrides
+- [x] 3.4 Optional stream→PCM bridge that does not stop tracks; docs point realtime to worklet
+- [x] 3.5 Tests: transfer detachment; lifecycle/restart; subscribe+proxy; createWorker override
+- [x] 3.6 Optional examples demo for buffer/job path
 
 ## 4. Phase 3 — Worklet + Comlink RPC
 

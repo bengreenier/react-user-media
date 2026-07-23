@@ -8,6 +8,10 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
+    "./audio-worker": {
+      "types": "./dist/types/audio/audio-worker.d.ts",
+      "import": "./dist/audio/audio-worker.js"
+    },
     "./package.json": "./package.json"
   },
   "publishConfig": {
@@ -28,7 +32,7 @@
     }
   ],
   "scripts": {
-    "build": "tsc -p ./tsconfig.types.json --emitDeclarationOnly && tsup --tsconfig ./tsconfig.lib.json --format cjs,esm src/index.ts",
+    "build": "tsc -p ./tsconfig.types.json --emitDeclarationOnly && tsup --tsconfig ./tsconfig.lib.json --format cjs,esm src/index.ts src/audio/audio-worker.ts src/audio/worker/audio-worker.ts",
     "doc": "typedoc --plugin typedoc-github-theme --tsconfig ./tsconfig.lib.json --readme ./README.md --basePath ./src --out ./docs_out --entryPoints ./src/index.ts",
     "test": "vitest run --coverage",
     "test-visible": "vitest run --coverage --browser.headless false",
@@ -56,5 +60,8 @@
   "files": [
     "dist",
     "README.md"
-  ]
+  ],
+  "dependencies": {
+    "comlink": "^4.4.2"
+  }
 }

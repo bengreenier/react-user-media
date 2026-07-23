@@ -25,6 +25,7 @@ A collection of hooks and components for easier access to [`getUserMedia`](https
   - `useMediaVideoDevices()`
 
 - `useMediaRecorder()`
+- `useAudioWorker()` — asynchronous PCM buffer jobs in a Dedicated Worker
 
 ## Components
 
@@ -35,6 +36,32 @@ A collection of hooks and components for easier access to [`getUserMedia`](https
 
 - `getSupportedConstraints()`
 - `closeMedia(...)`
+
+## Audio processing strategies
+
+Use `useAudioWorker()` for asynchronous or offline PCM jobs. Start it, then call
+the ready Comlink proxy's `processFrame` with `Float32Array` channel data wrapped
+in `Comlink.transfer` to avoid copying buffers. It reports RMS and peak levels.
+
+```ts
+const { api, isReady, start } = useAudioWorker();
+
+start();
+if (isReady && api) {
+  const samples = new Float32Array([0.5, -0.5]);
+  const result = await api.processFrame(
+    Comlink.transfer(
+      { channelData: [samples], sampleRate: 48_000 },
+      [samples.buffer],
+    ),
+  );
+}
+```
+
+This module worker factory is ESM-only. CommonJS consumers and test runners can
+provide `createWorker` to `useAudioWorker` for their bundler-compatible worker.
+`useAudioWorker` never acquires capture or stops tracks. Choose the audio-worklet
+strategy for realtime live-stream DSP; this worker strategy is for buffer jobs.
 
 ## Contributing
 
