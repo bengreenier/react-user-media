@@ -24,7 +24,7 @@
   },
   "pnpm": {
     "overrides": {
-      "@types/node": "^22.5.0",
+      "@types/node": "^22.15.0",
       "prettier": "^3.3.3",
       "playwright": "^1.46.1",
       "tsup": "^8.2.4",
@@ -37,6 +37,6 @@
     }
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   }
 }
