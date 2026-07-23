@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { closeMedia } from "../close-media";
 import { ShallowShapeOf } from "../types";
 
 // base types for MediaStateBase
@@ -161,12 +162,6 @@ export type DisplayMediaState =
   | DisplayMediaErrorState
   | DisplayMediaLoadingState
   | DisplayMediaReadyState;
-
-function closeMedia(media: MediaStream | undefined) {
-  media?.getTracks().forEach(function closeMediaTrack(track) {
-    track.stop();
-  });
-}
 
 function toError(error: unknown) {
   return error instanceof Error ? error : new Error(String(error));
