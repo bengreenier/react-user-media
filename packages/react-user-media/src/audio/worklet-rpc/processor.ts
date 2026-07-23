@@ -15,6 +15,8 @@ declare function registerProcessor(
   processor: typeof AudioWorkletProcessor,
 ): void;
 
+declare const currentTime: number;
+
 class AudioWorkletRpcProcessor extends AudioWorkletProcessor {
   #controller = new WorkletRpcController();
 
@@ -24,7 +26,7 @@ class AudioWorkletRpcProcessor extends AudioWorkletProcessor {
   }
 
   process(inputs: Float32Array[][], outputs: Float32Array[][]): boolean {
-    return this.#controller.process(inputs, outputs);
+    return this.#controller.process(inputs, outputs, currentTime);
   }
 }
 

@@ -8,7 +8,7 @@ describe("WorkletRpcController", () => {
     await controller.configure({ passthrough: false });
     const outputs = [[new Float32Array([99, 99])]];
 
-    expect(controller.process([[new Float32Array([3, 4])]], outputs)).toBe(
+    expect(controller.process([[new Float32Array([3, 4])]], outputs, 1)).toBe(
       true,
     );
     expect(outputs[0]?.[0]).toEqual(new Float32Array([0, 0]));
@@ -19,11 +19,16 @@ describe("WorkletRpcController", () => {
     const onResult = vi.fn();
 
     await controller.subscribe(onResult);
-    controller.process([[new Float32Array([3, 4])]], [[new Float32Array(2)]]);
+    controller.process(
+      [[new Float32Array([3, 4])]],
+      [[new Float32Array(2)]],
+      12.5,
+    );
 
     expect(onResult).toHaveBeenCalledWith({
       rms: Math.sqrt(12.5),
       peak: 4,
+      timestamp: 12.5,
     });
   });
 
@@ -36,7 +41,7 @@ describe("WorkletRpcController", () => {
 
     await expect(controller.configure({})).rejects.toThrow("disposed");
     await expect(controller.subscribe(onResult)).rejects.toThrow("disposed");
-    controller.process([[new Float32Array([1])]], [[new Float32Array(1)]]);
+    controller.process([[new Float32Array([1])]], [[new Float32Array(1)]], 1);
     expect(onResult).not.toHaveBeenCalled();
   });
 });

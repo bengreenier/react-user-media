@@ -1,11 +1,10 @@
+import type { AudioProcessResult } from "./types";
+
 export type AudioWorkletRpcOptions = {
   passthrough?: boolean;
 };
 
-export type AudioProcessResult = {
-  rms: number;
-  peak: number;
-};
+export type { AudioProcessResult } from "./types";
 
 export type AudioWorkletRpcApi = {
   configure(options: AudioWorkletRpcOptions): Promise<void>;
@@ -41,7 +40,11 @@ export class WorkletRpcController implements AudioWorkletRpcApi {
     this.#subscriptions.clear();
   }
 
-  process(inputs: Float32Array[][], outputs: Float32Array[][]): boolean {
+  process(
+    inputs: Float32Array[][],
+    outputs: Float32Array[][],
+    timestamp: number,
+  ): boolean {
     if (this.#disposed) {
       return false;
     }
@@ -66,6 +69,7 @@ export class WorkletRpcController implements AudioWorkletRpcApi {
     const result = {
       rms: Math.sqrt(sumSquares / samples.length),
       peak,
+      timestamp,
     };
     for (const subscription of this.#subscriptions) {
       subscription(result);

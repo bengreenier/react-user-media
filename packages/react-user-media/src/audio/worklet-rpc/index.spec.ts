@@ -25,6 +25,7 @@ describe("createAudioWorkletRpcSession", () => {
       createGain: vi.fn(() => silentGain),
       createMediaStreamSource: vi.fn(() => source),
       destination: {},
+      resume: vi.fn().mockResolvedValue(undefined),
     };
     const stream = { getTracks: vi.fn() } as unknown as MediaStream;
 
@@ -35,7 +36,7 @@ describe("createAudioWorkletRpcSession", () => {
     });
     await session.api.configure({ passthrough: false });
     const outputs = [[new Float32Array([99])]];
-    controller.process([[new Float32Array([1])]], outputs);
+    controller.process([[new Float32Array([1])]], outputs, 1);
 
     expect(outputs[0]?.[0]).toEqual(new Float32Array([0]));
     await session.dispose();
@@ -43,6 +44,7 @@ describe("createAudioWorkletRpcSession", () => {
     expect(context.audioWorklet.addModule).toHaveBeenCalledWith(
       "worklet-rpc-test.js",
     );
+    expect(context.resume).toHaveBeenCalledOnce();
     expect(source.disconnect).toHaveBeenCalledOnce();
     expect(node.disconnect).toHaveBeenCalledOnce();
     expect(silentGain.disconnect).toHaveBeenCalledOnce();

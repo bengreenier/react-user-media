@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { AudioWorkletRpcApi } from "./controller";
 import {
   type AudioWorkletRpcSessionOptions,
   createAudioWorkletRpcSession,
-} from "./index";
+} from "./session";
 
 const defaultOptions: AudioWorkletRpcSessionOptions = {};
 
@@ -23,6 +23,32 @@ export function useMediaAudioWorkletRpc(
   const [state, setState] = useState<AudioWorkletRpcState>({
     status: "idle",
   });
+  const {
+    audioContext,
+    createAudioContext,
+    createWorkletNode,
+    onResult,
+    processorName,
+    workletModuleUrl,
+  } = options;
+  const sessionOptions = useMemo(
+    () => ({
+      audioContext,
+      createAudioContext,
+      createWorkletNode,
+      onResult,
+      processorName,
+      workletModuleUrl,
+    }),
+    [
+      audioContext,
+      createAudioContext,
+      createWorkletNode,
+      onResult,
+      processorName,
+      workletModuleUrl,
+    ],
+  );
 
   useEffect(() => {
     if (!stream) {
@@ -34,7 +60,7 @@ export function useMediaAudioWorkletRpc(
     let session: Awaited<ReturnType<typeof createAudioWorkletRpcSession>>;
     setState({ status: "loading" });
 
-    void createAudioWorkletRpcSession(stream, options)
+    void createAudioWorkletRpcSession(stream, sessionOptions)
       .then((createdSession) => {
         if (!active) {
           return createdSession.dispose();
@@ -55,7 +81,7 @@ export function useMediaAudioWorkletRpc(
       active = false;
       void session?.dispose();
     };
-  }, [stream, options]);
+  }, [stream, sessionOptions]);
 
   return state;
 }
