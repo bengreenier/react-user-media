@@ -1,11 +1,8 @@
+export type { AudioProcessResult } from "../../audio";
+
 /**
- * A summary emitted by an audio processor.
- *
- * This mirrors the public audio processing result shape so the RPC subpath can
- * remain independently consumable until the shared audio module is available.
+ * Worklet-rpc configure options (passthrough / metric tuning).
  */
-export type AudioProcessResult = {
-  readonly rms: number;
-  readonly peak: number;
-  readonly timestamp: number;
+export type AudioWorkletRpcConfigureOptions = {
+  passthrough?: boolean;
 };
