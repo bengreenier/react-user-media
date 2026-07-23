@@ -1,17 +1,17 @@
 import * as Comlink from "comlink";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { createAudioWorker } from "../root-workers";
-import type { AudioProcessOptions, AudioWorkerApi } from "./types";
+import { createVideoWorker } from "../root-workers";
+import type { VideoProcessOptions, VideoWorkerApi } from "./types";
 
-export type AudioWorkerProxy = Comlink.Remote<AudioWorkerApi>;
+export type VideoWorkerProxy = Comlink.Remote<VideoWorkerApi>;
 
-export interface UseAudioWorkerOptions {
+export interface UseVideoWorkerOptions {
   createWorker?: () => Worker;
-  processOptions?: AudioProcessOptions;
+  processOptions?: VideoProcessOptions;
 }
 
-interface AudioWorkerStateBase {
-  api: AudioWorkerProxy | null;
+interface VideoWorkerStateBase {
+  api: VideoWorkerProxy | null;
   error: Error | null;
   isError: boolean;
   isIdle: boolean;
@@ -21,7 +21,7 @@ interface AudioWorkerStateBase {
   stop(): void;
 }
 
-interface AudioWorkerIdleState extends AudioWorkerStateBase {
+interface VideoWorkerIdleState extends VideoWorkerStateBase {
   api: null;
   error: null;
   isError: false;
@@ -30,7 +30,7 @@ interface AudioWorkerIdleState extends AudioWorkerStateBase {
   isReady: false;
 }
 
-interface AudioWorkerLoadingState extends AudioWorkerStateBase {
+interface VideoWorkerLoadingState extends VideoWorkerStateBase {
   api: null;
   error: null;
   isError: false;
@@ -39,8 +39,8 @@ interface AudioWorkerLoadingState extends AudioWorkerStateBase {
   isReady: false;
 }
 
-interface AudioWorkerReadyState extends AudioWorkerStateBase {
-  api: AudioWorkerProxy;
+interface VideoWorkerReadyState extends VideoWorkerStateBase {
+  api: VideoWorkerProxy;
   error: null;
   isError: false;
   isIdle: false;
@@ -48,7 +48,7 @@ interface AudioWorkerReadyState extends AudioWorkerStateBase {
   isReady: true;
 }
 
-interface AudioWorkerErrorState extends AudioWorkerStateBase {
+interface VideoWorkerErrorState extends VideoWorkerStateBase {
   api: null;
   error: Error;
   isError: true;
@@ -57,11 +57,11 @@ interface AudioWorkerErrorState extends AudioWorkerStateBase {
   isReady: false;
 }
 
-export type AudioWorkerState =
-  | AudioWorkerIdleState
-  | AudioWorkerLoadingState
-  | AudioWorkerReadyState
-  | AudioWorkerErrorState;
+export type VideoWorkerState =
+  | VideoWorkerIdleState
+  | VideoWorkerLoadingState
+  | VideoWorkerReadyState
+  | VideoWorkerErrorState;
 
 const idleState = {
   api: null,
@@ -73,19 +73,19 @@ const idleState = {
 } as const;
 
 /**
- * Manages an audio-job worker and its Comlink proxy.
+ * Manages a video-job worker and its Comlink proxy.
  *
  * This hook does not acquire media or stop tracks. Use it for asynchronous
- * buffer jobs; use an AudioWorklet for live stream DSP.
+ * frame/WebCodecs jobs; use the track-processor strategy for live streams.
  */
-export function useAudioWorker(
-  options: UseAudioWorkerOptions = {},
-): AudioWorkerState {
+export function useVideoWorker(
+  options: UseVideoWorkerOptions = {},
+): VideoWorkerState {
   const workerRef = useRef<Worker | null>(null);
-  const proxyRef = useRef<AudioWorkerProxy | null>(null);
+  const proxyRef = useRef<VideoWorkerProxy | null>(null);
   const sessionIdRef = useRef(0);
   const [state, setState] =
-    useState<Omit<AudioWorkerState, "start" | "stop">>(idleState);
+    useState<Omit<VideoWorkerState, "start" | "stop">>(idleState);
 
   const releaseCurrentWorker = useCallback(function releaseCurrentWorker() {
     sessionIdRef.current += 1;
@@ -103,7 +103,7 @@ export function useAudioWorker(
   }, []);
 
   const stop = useCallback(
-    function stopAudioWorker() {
+    function stopVideoWorker() {
       releaseCurrentWorker();
       setState(idleState);
     },
@@ -111,7 +111,7 @@ export function useAudioWorker(
   );
 
   const start = useCallback(
-    function startAudioWorker() {
+    function startVideoWorker() {
       releaseCurrentWorker();
       const sessionId = sessionIdRef.current;
       setState({
@@ -124,10 +124,10 @@ export function useAudioWorker(
       });
 
       let worker: Worker;
-      let proxy: AudioWorkerProxy;
+      let proxy: VideoWorkerProxy;
       try {
-        worker = (options.createWorker ?? createAudioWorker)();
-        proxy = Comlink.wrap<AudioWorkerApi>(worker);
+        worker = (options.createWorker ?? createVideoWorker)();
+        proxy = Comlink.wrap<VideoWorkerApi>(worker);
       } catch (error) {
         if (sessionIdRef.current === sessionId) {
           setState({
@@ -146,7 +146,7 @@ export function useAudioWorker(
       proxyRef.current = proxy;
 
       void proxy
-        .configure(options.processOptions ?? { sampleRate: 48_000 })
+        .configure(options.processOptions ?? { mode: "summary" })
         .then(() => {
           if (sessionIdRef.current !== sessionId) {
             return;
@@ -181,7 +181,7 @@ export function useAudioWorker(
   );
 
   useEffect(
-    function cleanupAudioWorkerOnUnmount() {
+    function cleanupVideoWorkerOnUnmount() {
       return releaseCurrentWorker;
     },
     [releaseCurrentWorker],
@@ -191,7 +191,7 @@ export function useAudioWorker(
     ...state,
     start,
     stop,
-  } as AudioWorkerState;
+  } as VideoWorkerState;
 }
 
 function toError(error: unknown): Error {
