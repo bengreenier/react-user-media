@@ -5,7 +5,7 @@ A collection of hooks and components for easier access to [`getUserMedia`](https
 ## Requirements
 
 - **Consumers:** React 19+ (`peerDependencies`: `react >= 19`) and a secure context / modern browser APIs for `getUserMedia`, `getDisplayMedia`, and `enumerateDevices`
-- **Contributing to this package:** Node.js 22+ (toolchain / CI for this monorepo)
+- **Contributing to this package:** Node.js 22.12+ (toolchain / CI for this monorepo; required by Vite 7)
 
 ## Hooks
 
